@@ -12,7 +12,7 @@
 - **외부 에디터 지원**: `$EDITOR` 환경변수에 설정된 편집기로 노트 내용 작성 (기본값: `vim`)
 - **인터랙티브 UI**: [Charmbracelet](https://charm.sh) 라이브러리 기반의 TUI 폼
 - **JWT 인증**: 액세스 토큰 만료 시 자동 재발급
-- **로컬 설정 저장**: `~/.note_cli.json`에 토큰 정보 저장
+- **주문형 로컬 설정**: `~/.config/note_cli/config.yaml`에 호스트/포트 및 인증 토큰 저장
 
 ---
 
@@ -65,72 +65,88 @@ note list
 ### 계정 관리
 
 #### 회원가입
+
 ```bash
 note register
 ```
+
 이름, 이메일, 비밀번호를 입력하는 인터랙티브 폼이 표시됩니다.
 
 #### 로그인
+
 ```bash
 note login
 ```
-이메일과 비밀번호를 입력하면 인증 토큰이 `~/.note_cli.json`에 저장됩니다.
+
+이메일과 비밀번호를 입력하면 인증 토큰이 `~/.config/note_cli/config.yaml`에 저장됩니다.
 
 ---
 
 ### 노트 관리
 
 #### 노트 목록 조회
+
 ```bash
 note list
 ```
+
 사용자의 모든 노트를 테이블 형식으로 출력합니다.
 
-```
+```bash
 ID   TITLE          CATEGORY   UPDATED
 1    회의 메모        Work       2026-03-10
 2    아이디어 정리     Idea       2026-03-09
 ```
 
 #### 노트 추가
+
 ```bash
 note add
 ```
+
 제목과 카테고리를 입력하는 폼이 나타난 후, 외부 편집기(기본: `vim`)가 열려 내용을 작성합니다.
 
 카테고리 선택지:
+
 - `Work`
 - `Personal`
 - `Idea`
 - `Other`
 
 #### 노트 조회
+
 ```bash
 note view [ID]
 ```
 
 예시:
+
 ```bash
 note view 1
 ```
 
 #### 노트 수정
+
 ```bash
 note edit [ID]
 ```
+
 기존 노트의 제목, 카테고리, 내용을 수정할 수 있습니다.
 
 예시:
+
 ```bash
 note edit 1
 ```
 
 #### 노트 삭제
+
 ```bash
 note delete [ID]
 ```
 
 예시:
+
 ```bash
 note delete 1
 ```
@@ -151,17 +167,20 @@ export EDITOR=nano
 
 ## 설정 파일
 
-로그인 후 `~/.note_cli.json` 파일이 자동으로 생성되며, 인증 토큰이 저장됩니다.
+앱을 처음 실행하거나 로그인하면 `~/.config/note_cli/config.yaml` 파일이 자동으로 생성됩니다.
 
-```json
-{
-  "access_token": "...",
-  "refresh_token": "..."
-}
+```yaml
+host: 127.0.0.1
+port: 8880
+access_token: "..."
+refresh_token: "..."
 ```
 
+- **host / port**: API 서버 주소를 변경할 때 수정합니다. 기본값은 `127.0.0.1` 및 `8880` 입니다.
 - **액세스 토큰**: 유효 기간 30분, 만료 시 자동 재발급
 - **리프레시 토큰**: 유효 기간 7일
+
+저장소의 `config.yaml.example` 파일을 참고하여 설정 파일을 직접 생성할 수도 있습니다.
 
 ---
 
@@ -170,7 +189,7 @@ export EDITOR=nano
 ### 빌드 및 관련 명령어
 
 | 명령어 | 설명 |
-|---|---|
+| - | - |
 | `make build` | `./note` 바이너리 빌드 |
 | `make install` | Go bin 경로에 설치 |
 | `make run` | 빌드 후 실행 (도움말 표시) |
@@ -191,7 +210,7 @@ go test ./...
 
 ## 프로젝트 구조
 
-```
+```bash
 note_cli/
 ├── main.go              # 진입점
 ├── go.mod               # Go 모듈 정의
@@ -223,7 +242,7 @@ note_cli/
 ## 주요 의존성
 
 | 패키지 | 용도 |
-|---|---|
+| - | - |
 | [cobra](https://github.com/spf13/cobra) | CLI 명령어 프레임워크 |
 | [huh](https://github.com/charmbracelet/huh) | 인터랙티브 TUI 폼 |
 | [bubbletea](https://github.com/charmbracelet/bubbletea) | 터미널 UI 프레임워크 |

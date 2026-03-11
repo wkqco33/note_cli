@@ -1,0 +1,9 @@
+# Note CLI Configuration Example
+# 이 파일을 ~/.config/note_cli/config.yaml 경로에 복사하여 사용하세요.
+
+host: "127.0.0.1" # API 서버 호스트 (기본값: 127.0.0.1)
+port: 8880        # API 서버 포트 (기본값: 8880)
+
+# 아래 값들은 login 명령어 실행 시 자동으로 갱신됩니다. 수동으로 변경할 필요가 없습니다.
+# access_token: "your_access_token_here"
+# refresh_token: "your_refresh_token_here"
