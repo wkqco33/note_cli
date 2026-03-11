@@ -25,6 +25,8 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          API_KEY: ${{ secrets.API_KEY }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           REPO_NAME=$(basename ${{ github.repository }})
           BINARY_NAME=$REPO_NAME
@@ -34,7 +36,7 @@ jobs:
           fi
 
           # 크로스플랫폼 빌드
-          go build -ldflags="-s -w" -o "$BINARY_NAME" main.go
+          go build -ldflags="-s -w -X 'note_cli/config/buildinfo.APIKey=${API_KEY}' -X 'note_cli/config/buildinfo.SecretKey=${SECRET_KEY}'" -o "$BINARY_NAME" main.go
 
           # 아카이브 생성 (바이너리 이름은 레포지토리 이름 유지)
           if [ "${{ matrix.goos }}" = "windows" ]; then
