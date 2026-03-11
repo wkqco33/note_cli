@@ -20,7 +20,7 @@ var downloadCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load()
 		if err != nil || cfg.AccessToken == "" {
-			fmt.Println("Please login first using 'note login'")
+			fmt.Println("Please login first using 'note_cli login'")
 			return
 		}
 

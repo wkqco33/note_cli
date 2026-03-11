@@ -69,7 +69,7 @@ var registerCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Println("Successfully registered! You can now run 'note login'.")
+		fmt.Println("Successfully registered! You can now run 'note_cli login'.")
 	},
 }
 

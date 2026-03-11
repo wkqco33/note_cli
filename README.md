@@ -35,7 +35,7 @@
 git clone https://github.com/wkqco33/note_cli.git
 cd note_cli
 
-# 빌드 (./note 바이너리 생성)
+# 빌드 (./note_cli 바이너리 생성)
 make build
 
 # 또는 Go bin 경로에 설치 (~/.go/bin 또는 $GOPATH/bin)
@@ -48,16 +48,16 @@ make install
 
 ```bash
 # 1. 계정 등록
-note register
+note_cli register
 
 # 2. 로그인
-note login
+note_cli login
 
 # 3. 노트 추가
-note add
+note_cli add
 
 # 4. 노트 목록 확인
-note list
+note_cli list
 ```
 
 ---
@@ -69,7 +69,7 @@ note list
 #### 회원가입
 
 ```bash
-note register
+note_cli register
 ```
 
 이름, 이메일, 비밀번호를 입력하는 인터랙티브 폼이 표시됩니다.
@@ -77,7 +77,7 @@ note register
 #### 로그인
 
 ```bash
-note login
+note_cli login
 ```
 
 이메일과 비밀번호를 입력하면 인증 토큰이 `~/.config/note_cli/config.yaml`에 저장됩니다.
@@ -89,7 +89,7 @@ note login
 #### 노트 목록 조회
 
 ```bash
-note list
+note_cli list
 ```
 
 사용자의 모든 노트를 테이블 형식으로 출력합니다.
@@ -103,7 +103,7 @@ ID   TITLE          CATEGORY   UPDATED
 #### 노트 추가
 
 ```bash
-note add
+note_cli add
 ```
 
 제목과 카테고리를 입력하는 폼이 나타난 후, 외부 편집기(기본: `vim`)가 열려 내용을 작성합니다.
@@ -118,7 +118,7 @@ note add
 #### 노트 조회
 
 ```bash
-note view [ID]
+note_cli view [ID]
 ```
 
 ID를 입력하지 않을 경우 TUI 목록에서 조회할 노트를 선택할 수 있습니다. 조회 시 노트의 원본 첨부파일 이름과 정보가 함께 표시됩니다.
@@ -126,16 +126,16 @@ ID를 입력하지 않을 경우 TUI 목록에서 조회할 노트를 선택할 
 예시:
 
 ```bash
-note view
-note view 1
+note_cli view
+note_cli view 1
 ```
 
 #### 노트 및 첨부파일 수정/다운로드/검색
 
 ```bash
-note edit [ID]
-note download [ID]
-note search [flags]
+note_cli edit [ID]
+note_cli download [ID]
+note_cli search [flags]
 ```
 
 - `edit`: 기존 노트의 제목, 카테고리, 내용, 첨부파일을 수정할 수 있습니다. ID 생략 시 TUI 화면에서 수정할 노트를 고를 수 있습니다.
@@ -145,7 +145,7 @@ note search [flags]
 #### 노트 및 첨부파일 삭제
 
 ```bash
-note delete [ID]
+note_cli delete [ID]
 ```
 
 원하는 노트 문서 전체를 지우거나, 첨부파일만 개별적으로 선택해 삭제할 수 있습니다. ID 없이 명령어만 실행하면 대화형 UI(TUI)를 통해 안전하게 삭제 대상을 확인 후 선택할 수 있습니다 (`--file` 플래그로 파일 삭제 모드 강제 가능).
@@ -153,9 +153,9 @@ note delete [ID]
 예시:
 
 ```bash
-note delete
-note delete 1
-note delete --file
+note_cli delete
+note_cli delete 1
+note_cli delete --file
 ```
 
 ---
@@ -197,7 +197,7 @@ refresh_token: "..."
 
 | 명령어 | 설명 |
 | - | - |
-| `make build` | `./note` 바이너리 빌드 |
+| `make build` | `./note_cli` 바이너리 빌드 |
 | `make install` | Go bin 경로에 설치 |
 | `make run` | 빌드 후 실행 (도움말 표시) |
 | `make test` | 단위 테스트 실행 |

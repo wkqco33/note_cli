@@ -10,7 +10,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "note",
+	Use:   "note_cli",
 	Short: "간단한 CLI 노트 애플리케이션",
 	Long:  `Note CLI는 원격 API를 사용하는 빠르고 간단한 터미널 기반 노트 에디터입니다.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {

@@ -33,7 +33,7 @@ var editCmd = &cobra.Command{
 
 		cfg, err := config.Load()
 		if err != nil || cfg.AccessToken == "" {
-			fmt.Println("Please login first using 'note login'")
+			fmt.Println("Please login first using 'note_cli login'")
 			return
 		}
 

@@ -1,7 +1,7 @@
 .PHONY: build install uninstall clean test run fmt help
 
 # The name of the resulting executable
-BINARY_NAME=note
+BINARY_NAME=note_cli
 
 # Load .env file
 ifneq (,$(wildcard ./.env))
