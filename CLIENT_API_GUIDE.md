@@ -66,9 +66,11 @@
     "title": "메모 제목",
     "content": "메모 내용",
     "category": "work",
-    "images": []
+    "images": ["http://<server-ip>:8880/static/uploads/filename.png"]
   }
   ```
+
+- **비고**: `images` 필드에는 '4. 파일 업로드' API를 통해 얻은 파일의 `url` 문자열 리스트를 전달합니다.
 
 ### 3.3 메모 상세 조회 / 수정 / 삭제
 
@@ -78,9 +80,56 @@
 
 ---
 
-## 4. 사용자 관리 (User)
+## 4. 파일 업로드 (File API)
 
-### 4.1 회원가입
+메모에 이미지나 파일을 첨부하기 위해 사용합니다.
+
+### 4.1 파일 업로드
+
+- **Endpoint**: `POST /files/upload`
+- **Header**: `Authorization: Bearer <access_token>`
+- **Body (Multipart/form-data)**:
+  - `file`: 업로드할 파일 객체
+- **Response**:
+
+  ```json
+  {
+    "id": 1,
+    "filename": "uuid_filename.png",
+    "original_filename": "my_image.png",
+    "file_size": 1024,
+    "content_type": "image/png",
+    "url": "http://<server-ip>:8880/static/uploads/uuid_filename.png",
+    "user_id": 1,
+    "created_at": "2024-03-11T10:00:00"
+  }
+  ```
+
+- **활용**: 응답으로 받은 `url`을 메모 작성(`POST /boards`) 또는 수정(`PATCH /boards`) 시 `images` 리스트에 포함하여 전송합니다.
+
+### 4.2 내 파일 목록 조회
+
+- **Endpoint**: `GET /files`
+- **Header**: `Authorization: Bearer <access_token>`
+- **Response**: `List[FileRead]`
+
+### 4.3 파일 다운로드
+
+- **Endpoint**: `GET /files/download/{file_id}`
+- **Header**: `Authorization: Bearer <access_token>`
+- **Response**: 파일 바이너리 데이터 (원본 파일명으로 다운로드됨)
+
+### 4.4 파일 삭제
+
+- **Endpoint**: `DELETE /files/{file_id}`
+- **Header**: `Authorization: Bearer <access_token>`
+- **Response**: `204 No Content`
+
+---
+
+## 5. 사용자 관리 (User)
+
+### 5.1 회원가입
 
 CLI 앱을 처음 사용하는 사용자를 등록합니다.
 
@@ -97,20 +146,23 @@ CLI 앱을 처음 사용하는 사용자를 등록합니다.
 
 ---
 
-## 5. 추천 클라이언트 워크플로우
+## 6. 추천 클라이언트 워크플로우
 
 1. **초기 실행**: 로컬에 저장된 `access_token`이 있는지 확인.
 2. **인증 확인**: `GET /boards/me`를 호출하여 토큰 유효성 검사.
-3. **토큰 만료 처리 (401 Unauthorized)**:
+3. **파일 첨부 시**:
+   - `POST /files/upload`로 파일을 먼저 업로드하고 `url`을 확보합니다.
+   - 확보된 `url`을 포함하여 `POST /boards`를 호출합니다.
+4. **토큰 만료 처리 (401 Unauthorized)**:
    - 저장된 `refresh_token`이 있다면 `POST /auth/refresh` 호출.
    - 성공 시 토큰 갱신 후 원래 요청 재시도.
    - 실패 시 로그인 화면(`POST /auth/login`) 표시.
-4. **데이터 동기화**: `GET /boards/me` 결과를 로컬 리스트로 출력.
-5. **오프라인 모드 (권장)**: 작성한 메모를 로컬에 임시 저장 후 서버 연결 시 `POST` 요청 수행.
+5. **데이터 동기화**: `GET /boards/me` 결과를 로컬 리스트로 출력.
+6. **오프라인 모드 (권장)**: 작성한 메모를 로컬에 임시 저장 후 서버 연결 시 `POST` 요청 수행.
 
 ---
 
-## 6. 주요 에러 코드
+## 7. 주요 에러 코드
 
 - `401 Unauthorized`: 토큰 만료 또는 잘못된 인증 정보.
 - `403 Forbidden`: 본인이 작성하지 않은 메모에 대한 수정/삭제 시도.

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"note_cli/api"
 	"note_cli/config"
 	"note_cli/tui"
@@ -9,6 +10,8 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
+
+var attachedFiles []string
 
 var addCmd = &cobra.Command{
 	Use:   "add",
@@ -18,6 +21,18 @@ var addCmd = &cobra.Command{
 		if err != nil || cfg.AccessToken == "" {
 			fmt.Println("Please login first using 'note login'")
 			return
+		}
+
+		for _, f := range attachedFiles {
+			stat, err := os.Stat(f)
+			if err != nil {
+				fmt.Printf("파일을 찾을 수 없습니다: %s\n", f)
+				return
+			}
+			if stat.Size() > 5*1024*1024 {
+				fmt.Printf("5MB 제한 초과 파일이 포함되어 있습니다: %s\n", f)
+				return
+			}
 		}
 
 		var title, category string
@@ -63,10 +78,24 @@ var addCmd = &cobra.Command{
 		}
 
 		client := api.NewClient(cfg)
+		
+		var imageUrls []string
+		for _, f := range attachedFiles {
+			fmt.Printf("업로드 중: %s...\n", f)
+			uploaded, err := client.UploadFile(f)
+			if err != nil {
+				fmt.Printf("업로드 실패 (%s): %v\n", f, err)
+				return
+			}
+			imageUrls = append(imageUrls, uploaded.URL)
+			fmt.Printf("업로드 완료: %s\n", f)
+		}
+
 		board := api.BoardCreate{
 			Title:    title,
 			Content:  content,
 			Category: category,
+			Images:   imageUrls,
 		}
 
 		createdBoard, err := client.CreateBoard(board)
@@ -80,5 +109,6 @@ var addCmd = &cobra.Command{
 }
 
 func init() {
+	addCmd.Flags().StringSliceVarP(&attachedFiles, "file", "f", []string{}, "첨부할 파일 경로 (여러 개 지정 가능)")
 	rootCmd.AddCommand(addCmd)
 }

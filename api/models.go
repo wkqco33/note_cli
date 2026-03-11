@@ -29,6 +29,7 @@ type BoardUpdate struct {
 	Title    *string   `json:"title,omitempty"`
 	Content  *string   `json:"content,omitempty"`
 	Category *string   `json:"category,omitempty"`
+	Images   *[]string `json:"images,omitempty"`
 }
 
 // BoardRead represents a board/note from the API responses
@@ -50,4 +51,16 @@ type APIError struct {
 
 func (e *APIError) Error() string {
 	return e.Detail
+}
+
+// FileRead represents a file from the API responses
+type FileRead struct {
+	ID               int    `json:"id"`
+	Filename         string `json:"filename"`
+	OriginalFilename string `json:"original_filename"`
+	FileSize         int    `json:"file_size"`
+	ContentType      string `json:"content_type"`
+	URL              string `json:"url"`
+	UserID           int    `json:"user_id"`
+	CreatedAt        string `json:"created_at"`
 }
