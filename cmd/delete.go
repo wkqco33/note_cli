@@ -11,7 +11,7 @@ import (
 
 var deleteCmd = &cobra.Command{
 	Use:   "delete [id]",
-	Short: "Delete a note by ID",
+	Short: "ID로 노트 삭제",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id, err := strconv.Atoi(args[0])

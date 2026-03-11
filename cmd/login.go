@@ -11,7 +11,7 @@ import (
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Log in to the Note API",
+	Short: "Note API 로그인",
 	Run: func(cmd *cobra.Command, args []string) {
 		var email, password string
 

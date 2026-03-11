@@ -4,13 +4,23 @@ import (
 	"fmt"
 	"os"
 
+	"note_cli/utils"
+
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "note",
-	Short: "A simple CLI note-taking application",
-	Long:  `Note CLI is a terminal-based fast and simple note editor using a remote API.`,
+	Short: "간단한 CLI 노트 애플리케이션",
+	Long:  `Note CLI는 원격 API를 사용하는 빠르고 간단한 터미널 기반 노트 에디터입니다.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		debug, _ := cmd.Flags().GetBool("debug")
+		utils.DebugMode = debug
+		utils.SetupLogger()
+		if utils.DebugMode {
+			utils.Debugln("디버그 모드가 활성화되었습니다.")
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -23,4 +33,5 @@ func Execute() {
 
 func init() {
 	// Root flags can be defined here
+	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug output")
 }

@@ -12,7 +12,7 @@ import (
 
 var viewCmd = &cobra.Command{
 	Use:   "view [id]",
-	Short: "View a note by ID",
+	Short: "ID로 노트 조회",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id, err := strconv.Atoi(args[0])

@@ -13,7 +13,7 @@ import (
 
 var editCmd = &cobra.Command{
 	Use:   "edit [id]",
-	Short: "Edit an existing note",
+	Short: "기존 노트 수정",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		id, err := strconv.Atoi(args[0])

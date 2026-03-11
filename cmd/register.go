@@ -11,7 +11,7 @@ import (
 
 var registerCmd = &cobra.Command{
 	Use:   "register",
-	Short: "Register a new user account",
+	Short: "새 사용자 계정 등록",
 	Run: func(cmd *cobra.Command, args []string) {
 		var name, email, password string
 

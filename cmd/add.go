@@ -12,7 +12,7 @@ import (
 
 var addCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add a new note",
+	Short: "새 노트 추가",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load()
 		if err != nil || cfg.AccessToken == "" {

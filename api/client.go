@@ -6,11 +6,7 @@ import (
 	"io"
 	"net/http"
 	"note_cli/config"
-)
-
-const (
-	// Default Base URL for the API
-	BaseURL = "http://127.0.0.1:8880/api/v1"
+	"note_cli/utils"
 )
 
 // Client is an HTTP client wrapper for the Note App API
@@ -22,8 +18,9 @@ type Client struct {
 
 // NewClient creates a new API client configured with the loaded config
 func NewClient(cfg *config.Config) *Client {
+	baseURL := fmt.Sprintf("http://%s:%d/api/v1", cfg.Host, cfg.Port)
 	return &Client{
-		BaseURL:    BaseURL, // Could be read from config or env
+		BaseURL:    baseURL,
 		HTTPClient: &http.Client{},
 		Config:     cfg,
 	}
@@ -37,6 +34,8 @@ func (c *Client) doRequest(req *http.Request, retryOn401 bool) ([]byte, error) {
 		req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
 	}
 	
+	utils.Debugf("API Request: %s %s", req.Method, req.URL.String())
+	
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
@@ -47,6 +46,9 @@ func (c *Client) doRequest(req *http.Request, retryOn401 bool) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
+
+	utils.Debugf("API Response: Status %d %s", resp.StatusCode, resp.Status)
+	utils.Debugf("API Response Body: %s", string(body))
 
 	if resp.StatusCode >= 400 {
 		// Handle token refresh logic automatically

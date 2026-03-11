@@ -1,0 +1,52 @@
+name: Release for ppm
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+
+      - name: Build Binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          REPO_NAME=$(basename ${{ github.repository }})
+          BINARY_NAME=$REPO_NAME
+
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BINARY_NAME="${REPO_NAME}.exe"
+          fi
+
+          # 크로스플랫폼 빌드
+          go build -ldflags="-s -w" -o "$BINARY_NAME" main.go
+
+          # 아카이브 생성 (바이너리 이름은 레포지토리 이름 유지)
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip "${REPO_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}.zip" "$BINARY_NAME"
+          else
+            tar -czvf "${REPO_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz" "$BINARY_NAME"
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.tar.gz
+            *.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
