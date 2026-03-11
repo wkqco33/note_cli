@@ -29,8 +29,8 @@ var addCmd = &cobra.Command{
 				fmt.Printf("파일을 찾을 수 없습니다: %s\n", f)
 				return
 			}
-			if stat.Size() > 5*1024*1024 {
-				fmt.Printf("5MB 제한 초과 파일이 포함되어 있습니다: %s\n", f)
+			if stat.Size() > 500*1024*1024 {
+				fmt.Printf("500MB 제한 초과 파일이 포함되어 있습니다: %s\n", f)
 				return
 			}
 		}
@@ -81,14 +81,14 @@ var addCmd = &cobra.Command{
 		
 		var imageUrls []string
 		for _, f := range attachedFiles {
-			fmt.Printf("업로드 중: %s...\n", f)
+			fmt.Printf("파일 첨부 중: %s\n", f)
 			uploaded, err := client.UploadFile(f)
 			if err != nil {
 				fmt.Printf("업로드 실패 (%s): %v\n", f, err)
 				return
 			}
 			imageUrls = append(imageUrls, uploaded.URL)
-			fmt.Printf("업로드 완료: %s\n", f)
+			fmt.Println("업로드 완료!")
 		}
 
 		board := api.BoardCreate{

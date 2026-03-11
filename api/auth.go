@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// Login authenticates the user and updates the config tokens
+// Login 사용자 인증 후 설정에 토큰 저장
 func (c *Client) Login(username, password string) error {
 	data := url.Values{}
 	data.Set("username", username)
@@ -30,11 +30,11 @@ func (c *Client) Login(username, password string) error {
 	return config.Save(c.Config)
 }
 
-// Refresh attempts to fetch a new access token using the refresh token
+// Refresh 리프레시 토큰을 이용해 새 액세스 토큰 발급 시도
 func (c *Client) Refresh() error {
 	endpoint := "/auth/refresh?refresh_token=" + url.QueryEscape(c.Config.RefreshToken)
 	
-	// Ensure we don't retry on 401 within the refresh itself
+	// 토큰 갱신 자체에서 401 오류 발생 시 재시도 방지
 	req, err := http.NewRequest("POST", c.BaseURL+endpoint, nil)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (c *Client) Refresh() error {
 	return config.Save(c.Config)
 }
 
-// Register creates a new user account
+// Register 신규 사용자 계정 생성
 func (c *Client) Register(user UserCreate) error {
 	payload, err := json.Marshal(user)
 	if err != nil {

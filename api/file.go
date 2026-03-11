@@ -1,16 +1,18 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"os"
 	"path/filepath"
+
+	"github.com/schollz/progressbar/v3"
 )
 
-// UploadFile uploads a single file to the server using multipart/form-data
+// UploadFile multipart/form-data를 사용하여 서버에 단일 파일 업로드
 func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -18,37 +20,62 @@ func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 	}
 	defer file.Close()
 
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-
-	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	stat, err := file.Stat()
 	if err != nil {
-		return nil, fmt.Errorf("could not create form file: %w", err)
+		return nil, fmt.Errorf("could not get file stat: %w", err)
 	}
 
-	_, err = io.Copy(part, file)
-	if err != nil {
-		return nil, fmt.Errorf("could not copy file content: %w", err)
-	}
+	pr, pw := io.Pipe()
+	writer := multipart.NewWriter(pw)
+	contentType := writer.FormDataContentType()
 
-	err = writer.Close()
-	if err != nil {
-		return nil, fmt.Errorf("could not close multipart writer: %w", err)
-	}
+	errChan := make(chan error, 1)
 
-	respBody, err := c.post("/files/upload", writer.FormDataContentType(), body)
+	go func() {
+		defer pw.Close()
+		part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+		if err != nil {
+			errChan <- err
+			return
+		}
+
+		bar := progressbar.DefaultBytes(stat.Size(), "업로드")
+
+		if _, err := io.Copy(io.MultiWriter(part, bar), file); err != nil {
+			errChan <- err
+			return
+		}
+
+		if err := writer.Close(); err != nil {
+			errChan <- err
+			return
+		}
+		errChan <- nil
+	}()
+
+	resp, err := c.postStream("/files/upload", contentType, pr)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
+	if writeErr := <-errChan; writeErr != nil {
+		return nil, fmt.Errorf("error building multipart request: %w", writeErr)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
 
 	var fr FileRead
-	if err := json.Unmarshal(respBody, &fr); err != nil {
+	if err := json.Unmarshal(body, &fr); err != nil {
 		return nil, err
 	}
 	return &fr, nil
 }
 
-// GetFiles fetches all files uploaded by the current user
+// GetFiles 현재 사용자가 업로드한 모든 파일 조회
 func (c *Client) GetFiles() ([]FileRead, error) {
 	body, err := c.get("/files")
 	if err != nil {
@@ -62,36 +89,55 @@ func (c *Client) GetFiles() ([]FileRead, error) {
 	return files, nil
 }
 
-// DownloadFile downloads a file by its ID and saves it to the specified directory.
-// Returns the absolute path where the file was saved.
+// DownloadFile ID로 파일을 다운로드하여 지정된 디렉토리에 저장
+// 파일이 저장된 절대 경로 반환
 func (c *Client) DownloadFile(fileID int, destDir string, filename string) (string, error) {
 	endpoint := fmt.Sprintf("/files/download/%d", fileID)
 	
-	// API 클라이언트 구조상 c.get은 메모리에 모두 올리는 구조일 수 있음.
-	// c.httpClient를 직접 노출시키거나, c.downloadReq 등의 스트림 전용 메서드가 필요함.
-	// client.go 의 구조를 살펴보고 필요한 경우 보완합니다.
-	
-	// 임시로 c.get을 통해 바이트를 받아오는 구조로 구현 (작은 파일에 한정)
-	// 추후 client.go에 Download 전용 메서드가 추가되면 교체 가능.
-	body, err := c.get(endpoint)
+	resp, err := c.getStream(endpoint)
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 	
 	if filename == "" {
-		filename = fmt.Sprintf("downloaded_file_%d", fileID)
+		contentDisp := resp.Header.Get("Content-Disposition")
+		if contentDisp != "" {
+			_, params, err := mime.ParseMediaType(contentDisp)
+			if err == nil && params["filename"] != "" {
+				filename = params["filename"]
+			}
+		}
+
+		if filename == "" {
+			filename = fmt.Sprintf("downloaded_file_%d", fileID)
+		}
 	}
 	destPath := filepath.Join(destDir, filename)
 	
-	err = os.WriteFile(destPath, body, 0644)
+	outFile, err := os.Create(destPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create file: %w", err)
+	}
+	defer outFile.Close()
+
+	var bar *progressbar.ProgressBar
+	if resp.ContentLength > 0 {
+		bar = progressbar.DefaultBytes(resp.ContentLength, "다운로드")
+	} else {
+		bar = progressbar.DefaultBytes(-1, "다운로드")
+	}
+
+	_, err = io.Copy(io.MultiWriter(outFile, bar), resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to write file: %w", err)
 	}
+	fmt.Println()
 
 	return destPath, nil
 }
 
-// DeleteFile deletes a file by ID
+// DeleteFile ID로 파일 삭제
 func (c *Client) DeleteFile(id int) error {
 	endpoint := fmt.Sprintf("/files/%d", id)
 	_, err := c.deleteReq(endpoint)

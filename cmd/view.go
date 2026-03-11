@@ -83,11 +83,27 @@ var viewCmd = &cobra.Command{
 		
 		if len(note.Images) > 0 {
 			fmt.Println("[첨부파일 목록]")
+
+			files, err := client.GetFiles()
+			urlToFilename := make(map[string]string)
+			if err == nil {
+				for _, f := range files {
+					name := f.OriginalFilename
+					if name == "" {
+						name = f.Filename
+					}
+					urlToFilename[f.URL] = name
+				}
+			}
+
 			for i, urlStr := range note.Images {
-				idx := strings.LastIndex(urlStr, "/")
-				filename := urlStr
-				if idx != -1 {
-					filename = urlStr[idx+1:]
+				filename := urlToFilename[urlStr]
+				if filename == "" {
+					idx := strings.LastIndex(urlStr, "/")
+					filename = urlStr
+					if idx != -1 {
+						filename = urlStr[idx+1:]
+					}
 				}
 				fmt.Printf("%d. %s (%s)\n", i+1, filename, urlStr)
 			}

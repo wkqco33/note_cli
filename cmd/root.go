@@ -23,7 +23,7 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
+// Execute 설정된 모든 자식 명령을 실행하고 플래그 값을 설정
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -32,6 +32,6 @@ func Execute() {
 }
 
 func init() {
-	// Root flags can be defined here
-	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug output")
+	// 최상위 명령어 전역 플래그 정의
+	rootCmd.PersistentFlags().Bool("debug", false, "디버그 출력 활성화")
 }

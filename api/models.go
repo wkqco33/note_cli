@@ -2,21 +2,21 @@ package api
 
 
 
-// TokenResponse represents the JWT tokens returned from auth endpoints
+// TokenResponse 인증 엔드포인트에서 반환된 JWT 토큰 정보
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	TokenType    string `json:"token_type"`
 }
 
-// UserCreate represents the payload to register a new user
+// UserCreate 신규 사용자 등록 페이로드
 type UserCreate struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-// BoardCreate represents the payload to create a new board/note
+// BoardCreate 새 노트 생성 페이로드
 type BoardCreate struct {
 	Title    string   `json:"title"`
 	Content  string   `json:"content"`
@@ -24,7 +24,7 @@ type BoardCreate struct {
 	Images   []string `json:"images,omitempty"`
 }
 
-// BoardUpdate represents the payload to update an existing board/note
+// BoardUpdate 기존 노트 수정 페이로드
 type BoardUpdate struct {
 	Title    *string   `json:"title,omitempty"`
 	Content  *string   `json:"content,omitempty"`
@@ -32,7 +32,7 @@ type BoardUpdate struct {
 	Images   *[]string `json:"images,omitempty"`
 }
 
-// BoardRead represents a board/note from the API responses
+// BoardRead API 응답을 통해 반환된 노트 정보
 type BoardRead struct {
 	ID        int       `json:"id"`
 	Title     string    `json:"title"`
@@ -44,7 +44,7 @@ type BoardRead struct {
 	UpdatedAt string    `json:"updated_at"`
 }
 
-// APIError represents the error structure returned from the server
+// APIError 서버에서 반환한 오류 구조
 type APIError struct {
 	Detail string `json:"detail"`
 }
@@ -53,7 +53,7 @@ func (e *APIError) Error() string {
 	return e.Detail
 }
 
-// FileRead represents a file from the API responses
+// FileRead API 응답을 통해 반환된 파일 정보
 type FileRead struct {
 	ID               int    `json:"id"`
 	Filename         string `json:"filename"`

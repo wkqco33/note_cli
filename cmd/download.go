@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
 
@@ -34,13 +35,14 @@ var downloadCmd = &cobra.Command{
 			}
 		}
 
-		files, err := client.GetFiles()
-		if err != nil {
-			fmt.Printf("Failed to get files: %v\n", err)
-			return
-		}
-
+		var filename string
 		if len(args) != 1 {
+			files, err := client.GetFiles()
+			if err != nil {
+				fmt.Printf("Failed to get files: %v\n", err)
+				return
+			}
+
 			if len(files) == 0 {
 				fmt.Println("No files found to download.")
 				return
@@ -77,9 +79,9 @@ var downloadCmd = &cobra.Command{
 					if len(noteTitle) > 15 {
 						noteTitle = noteTitle[:12] + "..."
 					}
-					label += fmt.Sprintf(" (Note: %s, Size: %d)", noteTitle, file.FileSize)
+					label += fmt.Sprintf(" (Note: %s, Size: %s)", noteTitle, humanize.Bytes(uint64(file.FileSize)))
 				} else {
-					label += fmt.Sprintf(" (Size: %d)", file.FileSize)
+					label += fmt.Sprintf(" (Size: %s)", humanize.Bytes(uint64(file.FileSize)))
 				}
 				
 				options = append(options, huh.NewOption(label, file.ID))
@@ -97,16 +99,15 @@ var downloadCmd = &cobra.Command{
 				fmt.Println("취소되었습니다.")
 				return
 			}
-		}
 
-		var filename string
-		for _, f := range files {
-			if f.ID == id {
-				filename = f.OriginalFilename
-				if filename == "" {
-					filename = f.Filename
+			for _, f := range files {
+				if f.ID == id {
+					filename = f.OriginalFilename
+					if filename == "" {
+						filename = f.Filename
+					}
+					break
 				}
-				break
 			}
 		}
 

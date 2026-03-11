@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-// GetBoards fetches all notes created by the current user
+// GetBoards 현재 사용자가 작성한 모든 노트 목록 조회
 func (c *Client) GetBoards() ([]BoardRead, error) {
 	body, err := c.get("/boards/me")
 	if err != nil {
@@ -20,7 +20,7 @@ func (c *Client) GetBoards() ([]BoardRead, error) {
 	return boards, nil
 }
 
-// CreateBoard creates a new note
+// CreateBoard 새 노트 작성
 func (c *Client) CreateBoard(board BoardCreate) (*BoardRead, error) {
 	payload, err := json.Marshal(board)
 	if err != nil {
@@ -39,7 +39,7 @@ func (c *Client) CreateBoard(board BoardCreate) (*BoardRead, error) {
 	return &br, nil
 }
 
-// GetBoard fetches a single note by ID
+// GetBoard 지정된 ID의 단일 노트 상세 조회
 func (c *Client) GetBoard(id int) (*BoardRead, error) {
 	endpoint := fmt.Sprintf("/boards/%d", id)
 	body, err := c.get(endpoint)
@@ -54,7 +54,7 @@ func (c *Client) GetBoard(id int) (*BoardRead, error) {
 	return &br, nil
 }
 
-// UpdateBoard modifies an existing note
+// UpdateBoard 기존 노트 수정
 func (c *Client) UpdateBoard(id int, update BoardUpdate) (*BoardRead, error) {
 	payload, err := json.Marshal(update)
 	if err != nil {
@@ -74,7 +74,7 @@ func (c *Client) UpdateBoard(id int, update BoardUpdate) (*BoardRead, error) {
 	return &br, nil
 }
 
-// DeleteBoard deletes a note by ID
+// DeleteBoard ID로 노트 삭제
 func (c *Client) DeleteBoard(id int) error {
 	endpoint := fmt.Sprintf("/boards/%d", id)
 	_, err := c.deleteReq(endpoint)
