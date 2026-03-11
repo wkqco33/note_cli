@@ -3,12 +3,21 @@
 # The name of the resulting executable
 BINARY_NAME=note
 
+# Load .env file
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
+# LDFLAGS for injecting build info
+LDFLAGS=-ldflags "-X 'note_cli/config/buildinfo.APIKey=${API_KEY}' -X 'note_cli/config/buildinfo.SecretKey=${SECRET_KEY}'"
+
 # Installation prefix
 PREFIX ?= /usr/local
 
 build:
 	@echo "Building the application..."
-	go build -o $(BINARY_NAME) main.go
+	go build $(LDFLAGS) -o $(BINARY_NAME) main.go
 
 install:
 	@echo "Installing the application to $(PREFIX)/bin..."

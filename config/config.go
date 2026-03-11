@@ -24,7 +24,7 @@ func getConfigPath() (string, error) {
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return "", err
 	}
-	
+
 	return filepath.Join(configDir, "config.yaml"), nil
 }
 

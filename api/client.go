@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"note_cli/config"
+	"note_cli/config/buildinfo"
 	"note_cli/utils"
 )
 
@@ -26,10 +27,9 @@ func NewClient(cfg *config.Config) *Client {
 	}
 }
 
-// doRequest performs the HTTP request and handles common error responses.
-// It also handles automatic token refresh on 401 Unauthorized errors once, per the guide.
 func (c *Client) doRequest(req *http.Request, retryOn401 bool) ([]byte, error) {
-	req.Header.Set("Secret-Key", "your_secret_key")
+	req.Header.Set("Secret-Key", buildinfo.SecretKey)
+	req.Header.Set("Api-Key", buildinfo.APIKey)
 	if c.Config.AccessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
 	}
