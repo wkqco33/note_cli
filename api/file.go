@@ -137,6 +137,31 @@ func (c *Client) DownloadFile(fileID int, destDir string, filename string) (stri
 	return destPath, nil
 }
 
+// DownloadFileTemp ID로 파일을 임시 디렉토리에 조용히 다운로드
+// 반환된 임시 파일 경로는 사용 후 호출자가 직접 삭제해야 함
+func (c *Client) DownloadFileTemp(fileID int, ext string) (string, error) {
+	endpoint := fmt.Sprintf("/files/download/%d", fileID)
+
+	resp, err := c.getStream(endpoint)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("note_img_*%s", ext))
+	if err != nil {
+		return "", fmt.Errorf("임시 파일 생성 실패: %w", err)
+	}
+	defer tmpFile.Close()
+
+	if _, err := io.Copy(tmpFile, resp.Body); err != nil {
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("파일 다운로드 실패: %w", err)
+	}
+
+	return tmpFile.Name(), nil
+}
+
 // DeleteFile ID로 파일 삭제
 func (c *Client) DeleteFile(id int) error {
 	endpoint := fmt.Sprintf("/files/%d", id)

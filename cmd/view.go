@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"note_cli/api"
 	"note_cli/config"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -11,7 +13,26 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
+	"github.com/wkqco/tdraw"
 )
+
+var noImage bool
+
+var imageExts = map[string]bool{
+	".png": true, ".jpg": true, ".jpeg": true,
+	".gif": true, ".bmp": true, ".webp": true,
+}
+
+func isImageFile(f api.FileRead) bool {
+	if strings.HasPrefix(f.ContentType, "image/") {
+		return true
+	}
+	orig := strings.ToLower(f.OriginalFilename)
+	if orig == "" {
+		orig = strings.ToLower(f.Filename)
+	}
+	return imageExts[filepath.Ext(orig)]
+}
 
 var viewCmd = &cobra.Command{
 	Use:   "view [id]",
@@ -107,21 +128,26 @@ var viewCmd = &cobra.Command{
 			fmt.Println(fileHeaderStyle.Render("📎 첨부파일 목록"))
 
 			files, err := client.GetFiles()
-			urlToFilename := make(map[string]string)
+			urlToFile := make(map[string]api.FileRead)
 			if err == nil {
 				for _, f := range files {
-					name := f.OriginalFilename
-					if name == "" {
-						name = f.Filename
-					}
-					urlToFilename[f.URL] = name
+					urlToFile[f.URL] = f
 				}
 			}
 
 			fileStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
 			urlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Italic(true)
+
 			for i, urlStr := range note.Images {
-				filename := urlToFilename[urlStr]
+				f, hasFile := urlToFile[urlStr]
+
+				filename := ""
+				if hasFile {
+					filename = f.OriginalFilename
+					if filename == "" {
+						filename = f.Filename
+					}
+				}
 				if filename == "" {
 					idx := strings.LastIndex(urlStr, "/")
 					filename = urlStr
@@ -129,7 +155,28 @@ var viewCmd = &cobra.Command{
 						filename = urlStr[idx+1:]
 					}
 				}
-				fmt.Printf("  %d. %s\n     %s\n", i+1, fileStyle.Render(filename), urlStyle.Render(urlStr))
+
+				fmt.Printf("  %d. %s\n", i+1, fileStyle.Render(filename))
+
+				if !noImage && hasFile && isImageFile(f) {
+					ext := filepath.Ext(strings.ToLower(f.OriginalFilename))
+					if ext == "" {
+						ext = filepath.Ext(strings.ToLower(f.Filename))
+					}
+					tmpPath, err := client.DownloadFileTemp(f.ID, ext)
+					if err == nil {
+						fmt.Println()
+						if drawErr := tdraw.DrawFile(os.Stdout, tmpPath, tdraw.Options{}); drawErr != nil {
+							fmt.Printf("     %s\n", urlStyle.Render(urlStr))
+						}
+						fmt.Println()
+						os.Remove(tmpPath)
+					} else {
+						fmt.Printf("     %s\n", urlStyle.Render(urlStr))
+					}
+				} else {
+					fmt.Printf("     %s\n", urlStyle.Render(urlStr))
+				}
 			}
 			fmt.Println(div)
 		}
@@ -138,4 +185,5 @@ var viewCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(viewCmd)
+	viewCmd.Flags().BoolVar(&noImage, "no-image", false, "이미지 파일을 터미널에 렌더링하지 않음")
 }
