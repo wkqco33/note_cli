@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 )
 
@@ -75,14 +77,34 @@ var viewCmd = &cobra.Command{
 		if len(updatedStr) >= 19 {
 			updatedStr = strings.Replace(updatedStr[:19], "T", " ", 1)
 		}
-		fmt.Printf("=== %s ===\n", note.Title)
-		fmt.Printf("Category: %s | Updated: %s\n", note.Category, updatedStr)
-		fmt.Println("--------------------------------------------------")
-		fmt.Println(note.Content)
-		fmt.Println("--------------------------------------------------")
-		
+
+		titleStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("99")).
+			Padding(0, 1)
+		metaStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("244")).
+			Italic(true)
+		divStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240"))
+
+		div := divStyle.Render(strings.Repeat("─", 50))
+		fmt.Println(div)
+		fmt.Println(titleStyle.Render(note.Title))
+		fmt.Println(metaStyle.Render(fmt.Sprintf("  %s  │  %s", note.Category, updatedStr)))
+		fmt.Println(div)
+
+		rendered, err := glamour.Render(note.Content, "dark")
+		if err != nil {
+			fmt.Println(note.Content)
+		} else {
+			fmt.Print(rendered)
+		}
+		fmt.Println(div)
+
 		if len(note.Images) > 0 {
-			fmt.Println("[첨부파일 목록]")
+			fileHeaderStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("214"))
+			fmt.Println(fileHeaderStyle.Render("📎 첨부파일 목록"))
 
 			files, err := client.GetFiles()
 			urlToFilename := make(map[string]string)
@@ -96,6 +118,8 @@ var viewCmd = &cobra.Command{
 				}
 			}
 
+			fileStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
+			urlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244")).Italic(true)
 			for i, urlStr := range note.Images {
 				filename := urlToFilename[urlStr]
 				if filename == "" {
@@ -105,9 +129,9 @@ var viewCmd = &cobra.Command{
 						filename = urlStr[idx+1:]
 					}
 				}
-				fmt.Printf("%d. %s (%s)\n", i+1, filename, urlStr)
+				fmt.Printf("  %d. %s\n     %s\n", i+1, fileStyle.Render(filename), urlStyle.Render(urlStr))
 			}
-			fmt.Println("--------------------------------------------------")
+			fmt.Println(div)
 		}
 	},
 }
