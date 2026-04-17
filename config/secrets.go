@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"note_cli/config/buildinfo"
+
 	"github.com/joho/godotenv"
 )
 
@@ -25,8 +27,13 @@ func LoadRuntimeSecrets() (RuntimeSecrets, error) {
 	}
 
 	secrets = readRuntimeSecrets()
+	if secrets.APIKey != "" && secrets.SecretKey != "" {
+		return secrets, nil
+	}
+
+	secrets = readEmbeddedSecrets()
 	if secrets.APIKey == "" || secrets.SecretKey == "" {
-		return RuntimeSecrets{}, fmt.Errorf("API 키가 설정되지 않았습니다. NOTE_CLI_API_KEY / NOTE_CLI_SECRET_KEY 환경변수 또는 .env 파일을 확인하세요")
+		return RuntimeSecrets{}, fmt.Errorf("API 키가 설정되지 않았습니다. 빌드타임 주입값 또는 NOTE_CLI_API_KEY / NOTE_CLI_SECRET_KEY 환경변수(.env 포함)를 확인하세요")
 	}
 
 	return secrets, nil
@@ -52,6 +59,13 @@ func readRuntimeSecrets() RuntimeSecrets {
 	return RuntimeSecrets{
 		APIKey:    firstNonEmpty(os.Getenv("NOTE_CLI_API_KEY"), os.Getenv("API_KEY")),
 		SecretKey: firstNonEmpty(os.Getenv("NOTE_CLI_SECRET_KEY"), os.Getenv("SECRET_KEY")),
+	}
+}
+
+func readEmbeddedSecrets() RuntimeSecrets {
+	return RuntimeSecrets{
+		APIKey:    strings.TrimSpace(buildinfo.APIKey),
+		SecretKey: strings.TrimSpace(buildinfo.SecretKey),
 	}
 }
 

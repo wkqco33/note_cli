@@ -3,11 +3,19 @@
 # The name of the resulting executable
 BINARY_NAME=note_cli
 
+# Load .env file
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
 # Version info from git tag
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+EMBED_API_KEY := $(if $(NOTE_CLI_API_KEY),$(NOTE_CLI_API_KEY),$(API_KEY))
+EMBED_SECRET_KEY := $(if $(NOTE_CLI_SECRET_KEY),$(NOTE_CLI_SECRET_KEY),$(SECRET_KEY))
 
 # LDFLAGS for injecting build info
-LDFLAGS=-ldflags "-X 'note_cli/config/buildinfo.Version=${VERSION}'"
+LDFLAGS=-ldflags "-X 'note_cli/config/buildinfo.APIKey=${EMBED_API_KEY}' -X 'note_cli/config/buildinfo.SecretKey=${EMBED_SECRET_KEY}' -X 'note_cli/config/buildinfo.Version=${VERSION}'"
 
 # Installation prefix
 PREFIX ?= /usr/local
