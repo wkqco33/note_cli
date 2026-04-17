@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"note_cli/api"
-	"note_cli/config"
 
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
@@ -18,21 +16,21 @@ var loginCmd = &cobra.Command{
 		form := huh.NewForm(
 			huh.NewGroup(
 				huh.NewInput().
-					Title("Email").
+					Title("이메일").
 					Value(&email).
 					Validate(func(str string) error {
 						if str == "" {
-							return fmt.Errorf("email is required")
+							return fmt.Errorf("이메일을 입력해야 합니다")
 						}
 						return nil
 					}),
 				huh.NewInput().
-					Title("Password").
+					Title("비밀번호").
 					EchoMode(huh.EchoModePassword).
 					Value(&password).
 					Validate(func(str string) error {
 						if str == "" {
-							return fmt.Errorf("password is required")
+							return fmt.Errorf("비밀번호를 입력해야 합니다")
 						}
 						return nil
 					}),
@@ -41,24 +39,23 @@ var loginCmd = &cobra.Command{
 
 		err := form.Run()
 		if err != nil {
-			fmt.Println("Login cancelled.")
+			fmt.Println("로그인이 취소되었습니다.")
 			return
 		}
 
-		cfg, err := config.Load()
+		client, err := newClient()
 		if err != nil {
-			fmt.Printf("Error loading config: %v\n", err)
+			fmt.Println(err)
 			return
 		}
 
-		client := api.NewClient(cfg)
 		err = client.Login(email, password)
 		if err != nil {
-			fmt.Printf("Login failed: %v\n", err)
+			fmt.Printf("로그인에 실패했습니다: %v\n", err)
 			return
 		}
 
-		fmt.Println("Successfully logged in!")
+		fmt.Println("로그인했습니다.")
 	},
 }
 

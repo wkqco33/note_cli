@@ -2,13 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"note_cli/api"
-	"note_cli/config"
-	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/huh"
-	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
 
@@ -19,13 +14,11 @@ var deleteCmd = &cobra.Command{
 	Short: "노트 또는 첨부파일 삭제",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := config.Load()
-		if err != nil || cfg.AccessToken == "" {
-			fmt.Println("Please login first using 'note_cli login'")
+		client, err := newAuthenticatedClient()
+		if err != nil {
+			fmt.Println(err)
 			return
 		}
-
-		client := api.NewClient(cfg)
 
 		target := "note"
 		if deleteFile {
@@ -51,29 +44,15 @@ var deleteCmd = &cobra.Command{
 			if target == "note" {
 				notes, err := client.GetBoards()
 				if err != nil {
-					fmt.Printf("Failed to get notes: %v\n", err)
+					fmt.Printf("노트 목록을 불러오지 못했습니다: %v\n", err)
 					return
 				}
 				if len(notes) == 0 {
 					fmt.Println("삭제할 노트가 없습니다.")
 					return
 				}
-	
-				var options []huh.Option[int]
-				for _, note := range notes {
-					title := note.Title
-					if len(title) > 40 {
-						title = title[:37] + "..."
-					}
-					label := fmt.Sprintf("[%d] %s", note.ID, title)
-					options = append(options, huh.NewOption(label, note.ID))
-				}
-	
-				err = huh.NewSelect[int]().
-					Title("삭제할 노트를 선택하세요").
-					Options(options...).
-					Value(&id).
-					Run()
+
+				id, err = selectBoardID("삭제할 노트를 선택하세요", notes)
 				if err != nil {
 					fmt.Println("취소되었습니다.")
 					return
@@ -81,7 +60,7 @@ var deleteCmd = &cobra.Command{
 			} else {
 				files, err := client.GetFiles()
 				if err != nil {
-					fmt.Printf("Failed to get files: %v\n", err)
+					fmt.Printf("파일 목록을 불러오지 못했습니다: %v\n", err)
 					return
 				}
 				if len(files) == 0 {
@@ -90,53 +69,21 @@ var deleteCmd = &cobra.Command{
 				}
 
 				boards, err := client.GetBoards()
-				var boardMap = make(map[string]string)
+				boardMap := map[string]string{}
 				if err == nil {
-					for _, b := range boards {
-						for _, img := range b.Images {
-							idx := strings.LastIndex(img, "/")
-							if idx != -1 {
-								boardMap[img[idx+1:]] = b.Title
-							}
-						}
-					}
+					boardMap = boardTitleByFileName(boards)
 				}
-	
-				var options []huh.Option[int]
-				for _, file := range files {
-					name := file.OriginalFilename
-					if name == "" {
-						name = file.Filename
-					}
-					
-					label := fmt.Sprintf("[%d] %s", file.ID, name)
-					noteTitle := boardMap[file.Filename]
-					if noteTitle != "" {
-						if len(noteTitle) > 15 {
-							noteTitle = noteTitle[:12] + "..."
-						}
-						label += fmt.Sprintf(" (Note: %s, Size: %s)", noteTitle, humanize.Bytes(uint64(file.FileSize)))
-					} else {
-						label += fmt.Sprintf(" (Size: %s)", humanize.Bytes(uint64(file.FileSize)))
-					}
-					
-					options = append(options, huh.NewOption(label, file.ID))
-				}
-	
-				err = huh.NewSelect[int]().
-					Title("삭제할 파일을 선택하세요").
-					Options(options...).
-					Value(&id).
-					Run()
+
+				id, err = selectFileID("삭제할 파일을 선택하세요", files, boardMap)
 				if err != nil {
 					fmt.Println("취소되었습니다.")
 					return
 				}
 			}
 		} else {
-			id, err = strconv.Atoi(args[0])
+			id, err = parseIDArg(args)
 			if err != nil {
-				fmt.Println("Invalid ID: must be an integer")
+				fmt.Println(err)
 				return
 			}
 		}
@@ -144,11 +91,11 @@ var deleteCmd = &cobra.Command{
 		confirm := false
 		err = huh.NewConfirm().
 			Title(fmt.Sprintf("정말로 ID %d 항목을 삭제하시겠습니까?", id)).
-			Affirmative("예 (Delete)").
-			Negative("아니오 (Cancel)").
+			Affirmative("예 (삭제)").
+			Negative("아니오 (취소)").
 			Value(&confirm).
 			Run()
-		
+
 		if err != nil || !confirm {
 			fmt.Println("삭제가 취소되었습니다.")
 			return
@@ -157,17 +104,17 @@ var deleteCmd = &cobra.Command{
 		if target == "note" {
 			err = client.DeleteBoard(id)
 			if err != nil {
-				fmt.Printf("Failed to delete note: %v\n", err)
+				fmt.Printf("노트를 삭제하지 못했습니다: %v\n", err)
 				return
 			}
-			fmt.Printf("Successfully deleted note %d\n", id)
+			fmt.Printf("노트를 삭제했습니다. ID: %d\n", id)
 		} else {
 			err = client.DeleteFile(id)
 			if err != nil {
-				fmt.Printf("Failed to delete file: %v\n", err)
+				fmt.Printf("파일을 삭제하지 못했습니다: %v\n", err)
 				return
 			}
-			fmt.Printf("Successfully deleted file %d\n", id)
+			fmt.Printf("파일을 삭제했습니다. ID: %d\n", id)
 		}
 	},
 }

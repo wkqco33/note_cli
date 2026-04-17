@@ -3,14 +3,11 @@ package cmd
 import (
 	"fmt"
 	"note_cli/api"
-	"note_cli/config"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/wkqco/tdraw"
@@ -39,65 +36,43 @@ var viewCmd = &cobra.Command{
 	Short: "ID로 노트 조회",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := config.Load()
-		if err != nil || cfg.AccessToken == "" {
-			fmt.Println("Please login first using 'note_cli login'")
+		client, err := newAuthenticatedClient()
+		if err != nil {
+			fmt.Println(err)
 			return
 		}
 
-		client := api.NewClient(cfg)
-
 		var id int
 		if len(args) == 1 {
-			id, err = strconv.Atoi(args[0])
+			id, err = parseIDArg(args)
 			if err != nil {
-				fmt.Println("Invalid ID: must be an integer")
+				fmt.Println(err)
 				return
 			}
 		} else {
 			notes, err := client.GetBoards()
 			if err != nil {
-				fmt.Printf("Failed to get notes: %v\n", err)
+				fmt.Printf("노트 목록을 불러오지 못했습니다: %v\n", err)
 				return
 			}
 			if len(notes) == 0 {
-				fmt.Println("No notes found to view.")
+				fmt.Println("조회할 노트가 없습니다.")
 				return
 			}
 
-			var options []huh.Option[int]
-			for _, note := range notes {
-				title := note.Title
-				if len(title) > 40 {
-					title = title[:37] + "..."
-				}
-				label := fmt.Sprintf("[%d] %s", note.ID, title)
-				options = append(options, huh.NewOption(label, note.ID))
-			}
-
-			form := huh.NewForm(
-				huh.NewGroup(
-					huh.NewSelect[int]().
-						Title("조회할 노트를 선택하세요").
-						Options(options...).
-						Value(&id),
-				),
-			)
-			if err := form.Run(); err != nil {
+			id, err = selectBoardID("조회할 노트를 선택하세요", notes)
+			if err != nil {
 				fmt.Println("취소되었습니다.")
 				return
 			}
 		}
 		note, err := client.GetBoard(id)
 		if err != nil {
-			fmt.Printf("Failed to get note: %v\n", err)
+			fmt.Printf("노트를 불러오지 못했습니다: %v\n", err)
 			return
 		}
 
-		updatedStr := note.UpdatedAt
-		if len(updatedStr) >= 19 {
-			updatedStr = strings.Replace(updatedStr[:19], "T", " ", 1)
-		}
+		updatedStr := formatTimestamp(note.UpdatedAt, 19)
 
 		titleStyle := lipgloss.NewStyle().
 			Bold(true).
@@ -115,11 +90,19 @@ var viewCmd = &cobra.Command{
 		fmt.Println(metaStyle.Render(fmt.Sprintf("  %s  │  %s", note.Category, updatedStr)))
 		fmt.Println(div)
 
-		rendered, err := glamour.Render(note.Content, "dark")
+		renderer, err := glamour.NewTermRenderer(
+			glamour.WithStandardStyle("dark"),
+			glamour.WithWordWrap(0),
+		)
 		if err != nil {
 			fmt.Println(note.Content)
 		} else {
-			fmt.Print(rendered)
+			rendered, err := renderer.Render(note.Content)
+			if err != nil {
+				fmt.Println(note.Content)
+			} else {
+				fmt.Print(rendered)
+			}
 		}
 		fmt.Println(div)
 
@@ -141,28 +124,15 @@ var viewCmd = &cobra.Command{
 			for i, urlStr := range note.Images {
 				f, hasFile := urlToFile[urlStr]
 
-				filename := ""
+				filename := fileNameFromURL(urlStr)
 				if hasFile {
-					filename = f.OriginalFilename
-					if filename == "" {
-						filename = f.Filename
-					}
-				}
-				if filename == "" {
-					idx := strings.LastIndex(urlStr, "/")
-					filename = urlStr
-					if idx != -1 {
-						filename = urlStr[idx+1:]
-					}
+					filename = displayFileName(f)
 				}
 
 				fmt.Printf("  %d. %s\n", i+1, fileStyle.Render(filename))
 
 				if !noImage && hasFile && isImageFile(f) {
-					ext := filepath.Ext(strings.ToLower(f.OriginalFilename))
-					if ext == "" {
-						ext = filepath.Ext(strings.ToLower(f.Filename))
-					}
+					ext := fileExtension(f)
 					tmpPath, err := client.DownloadFileTemp(f.ID, ext)
 					if err == nil {
 						fmt.Println()

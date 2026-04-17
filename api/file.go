@@ -93,13 +93,13 @@ func (c *Client) GetFiles() ([]FileRead, error) {
 // 파일이 저장된 절대 경로 반환
 func (c *Client) DownloadFile(fileID int, destDir string, filename string) (string, error) {
 	endpoint := fmt.Sprintf("/files/download/%d", fileID)
-	
+
 	resp, err := c.getStream(endpoint)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	
+
 	if filename == "" {
 		contentDisp := resp.Header.Get("Content-Disposition")
 		if contentDisp != "" {
@@ -114,7 +114,7 @@ func (c *Client) DownloadFile(fileID int, destDir string, filename string) (stri
 		}
 	}
 	destPath := filepath.Join(destDir, filename)
-	
+
 	outFile, err := os.Create(destPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to create file: %w", err)

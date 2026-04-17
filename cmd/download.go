@@ -2,15 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"note_cli/api"
-	"note_cli/config"
-	"os"
-	"strconv"
-	"strings"
-
-	"github.com/charmbracelet/huh"
-	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 var downloadCmd = &cobra.Command{
@@ -18,19 +11,17 @@ var downloadCmd = &cobra.Command{
 	Short: "파일 ID로 첨부파일 다운로드",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := config.Load()
-		if err != nil || cfg.AccessToken == "" {
-			fmt.Println("Please login first using 'note_cli login'")
+		client, err := newAuthenticatedClient()
+		if err != nil {
+			fmt.Println(err)
 			return
 		}
 
-		client := api.NewClient(cfg)
-
 		var id int
 		if len(args) == 1 {
-			id, err = strconv.Atoi(args[0])
+			id, err = parseIDArg(args)
 			if err != nil {
-				fmt.Println("Invalid ID: must be an integer")
+				fmt.Println(err)
 				return
 			}
 		}
@@ -39,75 +30,29 @@ var downloadCmd = &cobra.Command{
 		if len(args) != 1 {
 			files, err := client.GetFiles()
 			if err != nil {
-				fmt.Printf("Failed to get files: %v\n", err)
+				fmt.Printf("파일 목록을 불러오지 못했습니다: %v\n", err)
 				return
 			}
 
 			if len(files) == 0 {
-				fmt.Println("No files found to download.")
+				fmt.Println("다운로드할 파일이 없습니다.")
 				return
 			}
 
 			boards, err := client.GetBoards()
 			if err != nil {
-				fmt.Printf("Failed to get notes: %v\n", err)
+				fmt.Printf("노트 목록을 불러오지 못했습니다: %v\n", err)
 				return
 			}
 
-			fileNoteMap := make(map[string]string)
-			for _, board := range boards {
-				for _, imgUrl := range board.Images {
-					idx := strings.LastIndex(imgUrl, "/")
-					fname := imgUrl
-					if idx != -1 {
-						fname = imgUrl[idx+1:]
-					}
-					fileNoteMap[fname] = board.Title
-				}
-			}
-
-			var options []huh.Option[int]
-			for _, file := range files {
-				name := file.OriginalFilename
-				if name == "" {
-					name = file.Filename
-				}
-				
-				label := fmt.Sprintf("[%d] %s", file.ID, name)
-				noteTitle := fileNoteMap[file.Filename]
-				if noteTitle != "" {
-					if len(noteTitle) > 15 {
-						noteTitle = noteTitle[:12] + "..."
-					}
-					label += fmt.Sprintf(" (Note: %s, Size: %s)", noteTitle, humanize.Bytes(uint64(file.FileSize)))
-				} else {
-					label += fmt.Sprintf(" (Size: %s)", humanize.Bytes(uint64(file.FileSize)))
-				}
-				
-				options = append(options, huh.NewOption(label, file.ID))
-			}
-
-			form := huh.NewForm(
-				huh.NewGroup(
-					huh.NewSelect[int]().
-						Title("다운로드할 파일을 선택하세요").
-						Options(options...).
-						Value(&id),
-				),
-			)
-			if err := form.Run(); err != nil {
+			id, err = selectFileID("다운로드할 파일을 선택하세요", files, boardTitleByFileName(boards))
+			if err != nil {
 				fmt.Println("취소되었습니다.")
 				return
 			}
 
-			for _, f := range files {
-				if f.ID == id {
-					filename = f.OriginalFilename
-					if filename == "" {
-						filename = f.Filename
-					}
-					break
-				}
+			if file, ok := findFileByID(files, id); ok {
+				filename = displayFileName(file)
 			}
 		}
 

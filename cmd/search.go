@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"note_cli/api"
-	"note_cli/config"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -22,9 +21,9 @@ var searchCmd = &cobra.Command{
 	Use:   "search",
 	Short: "노트 검색 (제목, 내용, 파일명)",
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := config.Load()
-		if err != nil || cfg.AccessToken == "" {
-			fmt.Println("Please login first using 'note_cli login'")
+		client, err := newAuthenticatedClient()
+		if err != nil {
+			fmt.Println(err)
 			return
 		}
 
@@ -70,10 +69,9 @@ var searchCmd = &cobra.Command{
 			}
 		}
 
-		client := api.NewClient(cfg)
 		notes, err := client.GetBoards()
 		if err != nil {
-			fmt.Printf("Failed to get notes: %v\n", err)
+			fmt.Printf("노트 목록을 불러오지 못했습니다: %v\n", err)
 			return
 		}
 
@@ -81,7 +79,7 @@ var searchCmd = &cobra.Command{
 		if searchFile != "" {
 			files, err = client.GetFiles()
 			if err != nil {
-				fmt.Printf("Failed to get files for searching: %v\n", err)
+				fmt.Printf("검색용 파일 목록을 불러오지 못했습니다: %v\n", err)
 				return
 			}
 		}
@@ -90,11 +88,7 @@ var searchCmd = &cobra.Command{
 		urlToFilename := make(map[string]string)
 		if searchFile != "" {
 			for _, f := range files {
-				name := f.OriginalFilename
-				if name == "" {
-					name = f.Filename
-				}
-				urlToFilename[f.URL] = name
+				urlToFilename[f.URL] = displayFileName(f)
 			}
 		}
 
@@ -117,10 +111,7 @@ var searchCmd = &cobra.Command{
 				for _, imgUrl := range note.Images {
 					filename := urlToFilename[imgUrl]
 					if filename == "" {
-						idx := strings.LastIndex(imgUrl, "/")
-						if idx != -1 {
-							filename = imgUrl[idx+1:]
-						}
+						filename = fileNameFromURL(imgUrl)
 					}
 					if strings.Contains(strings.ToLower(filename), strings.ToLower(searchFile)) {
 						fileMatch = true
@@ -146,15 +137,7 @@ var searchCmd = &cobra.Command{
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 		fmt.Fprintln(w, "ID\tTITLE\tCATEGORY\tUPDATED")
 		for _, note := range results {
-			updatedStr := note.UpdatedAt
-			if len(updatedStr) >= 16 {
-				updatedStr = strings.Replace(updatedStr[:16], "T", " ", 1)
-			}
-			title := note.Title
-			if len(title) > 40 {
-				title = title[:37] + "..."
-			}
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", note.ID, title, note.Category, updatedStr)
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", note.ID, truncateText(note.Title, 40), note.Category, formatTimestamp(note.UpdatedAt, 16))
 		}
 		w.Flush()
 	},

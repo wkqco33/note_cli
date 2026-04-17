@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"note_cli/api"
-	"note_cli/config"
 
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
@@ -18,30 +17,30 @@ var registerCmd = &cobra.Command{
 		form := huh.NewForm(
 			huh.NewGroup(
 				huh.NewInput().
-					Title("Name").
+					Title("이름").
 					Value(&name).
 					Validate(func(str string) error {
 						if str == "" {
-							return fmt.Errorf("name is required")
+							return fmt.Errorf("이름을 입력해야 합니다")
 						}
 						return nil
 					}),
 				huh.NewInput().
-					Title("Email").
+					Title("이메일").
 					Value(&email).
 					Validate(func(str string) error {
 						if str == "" {
-							return fmt.Errorf("email is required")
+							return fmt.Errorf("이메일을 입력해야 합니다")
 						}
 						return nil
 					}),
 				huh.NewInput().
-					Title("Password").
+					Title("비밀번호").
 					EchoMode(huh.EchoModePassword).
 					Value(&password).
 					Validate(func(str string) error {
 						if str == "" {
-							return fmt.Errorf("password is required")
+							return fmt.Errorf("비밀번호를 입력해야 합니다")
 						}
 						return nil
 					}),
@@ -50,26 +49,29 @@ var registerCmd = &cobra.Command{
 
 		err := form.Run()
 		if err != nil {
-			fmt.Println("Registration cancelled.")
+			fmt.Println("회원가입이 취소되었습니다.")
 			return
 		}
 
-		cfg, _ := config.Load()
-		client := api.NewClient(cfg)
-		
+		client, err := newClient()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
 		user := api.UserCreate{
 			Name:     name,
 			Email:    email,
 			Password: password,
 		}
-		
+
 		err = client.Register(user)
 		if err != nil {
-			fmt.Printf("Registration failed: %v\n", err)
+			fmt.Printf("회원가입에 실패했습니다: %v\n", err)
 			return
 		}
 
-		fmt.Println("Successfully registered! You can now run 'note_cli login'.")
+		fmt.Println("회원가입이 완료되었습니다. 이제 'note_cli login'으로 로그인하세요.")
 	},
 }
 

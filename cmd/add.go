@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"note_cli/api"
-	"note_cli/config"
 	"note_cli/tui"
 
 	"github.com/charmbracelet/huh"
@@ -17,22 +15,15 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "새 노트 추가",
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := config.Load()
-		if err != nil || cfg.AccessToken == "" {
-			fmt.Println("Please login first using 'note_cli login'")
+		client, err := newAuthenticatedClient()
+		if err != nil {
+			fmt.Println(err)
 			return
 		}
 
-		for _, f := range attachedFiles {
-			stat, err := os.Stat(f)
-			if err != nil {
-				fmt.Printf("파일을 찾을 수 없습니다: %s\n", f)
-				return
-			}
-			if stat.Size() > 500*1024*1024 {
-				fmt.Printf("500MB 제한 초과 파일이 포함되어 있습니다: %s\n", f)
-				return
-			}
+		if err := validateAttachedFiles(attachedFiles); err != nil {
+			fmt.Println(err)
+			return
 		}
 
 		var title, category string
@@ -40,45 +31,38 @@ var addCmd = &cobra.Command{
 		form := huh.NewForm(
 			huh.NewGroup(
 				huh.NewInput().
-					Title("Title").
+					Title("제목").
 					Value(&title).
 					Validate(func(str string) error {
 						if str == "" {
-							return fmt.Errorf("title is required")
+							return fmt.Errorf("제목을 입력해야 합니다")
 						}
 						return nil
 					}),
 				huh.NewSelect[string]().
-					Title("Category").
-					Options(
-						huh.NewOption("Work", "work"),
-						huh.NewOption("Personal", "personal"),
-						huh.NewOption("Idea", "idea"),
-						huh.NewOption("Other", "other"),
-					).
+					Title("카테고리").
+					Options(categorySelectOptions()...).
 					Value(&category),
 			),
 		)
 
 		if err := form.Run(); err != nil {
-			fmt.Println("Cancelled.")
+			fmt.Println("작성이 취소되었습니다.")
 			return
 		}
 
-		fmt.Println("Opening editor for note content...")
+		fmt.Println("노트 내용을 편집기에서 작성합니다...")
 		content, err := tui.OpenEditor("")
 		if err != nil {
-			fmt.Printf("Error opening editor: %v\n", err)
+			fmt.Printf("편집기를 열지 못했습니다: %v\n", err)
 			return
 		}
 
 		if content == "" {
-			fmt.Println("Note content is empty, cancelling.")
+			fmt.Println("노트 내용이 비어 있어 생성을 취소했습니다.")
 			return
 		}
 
-		client := api.NewClient(cfg)
-		
 		var imageUrls []string
 		for _, f := range attachedFiles {
 			fmt.Printf("파일 첨부 중: %s\n", f)
@@ -100,11 +84,11 @@ var addCmd = &cobra.Command{
 
 		createdBoard, err := client.CreateBoard(board)
 		if err != nil {
-			fmt.Printf("Failed to create note: %v\n", err)
+			fmt.Printf("노트를 생성하지 못했습니다: %v\n", err)
 			return
 		}
 
-		fmt.Printf("Successfully created note with ID %d!\n", createdBoard.ID)
+		fmt.Printf("노트를 생성했습니다. ID: %d\n", createdBoard.ID)
 	},
 }
 

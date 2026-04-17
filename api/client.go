@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"note_cli/config"
-	"note_cli/config/buildinfo"
 	"note_cli/utils"
 )
 
@@ -28,17 +27,9 @@ func NewClient(cfg *config.Config) *Client {
 }
 
 func (c *Client) doRequest(req *http.Request, retryOn401 bool) ([]byte, error) {
-	req.Header.Set("Secret-Key", buildinfo.SecretKey)
-	req.Header.Set("Api-Key", buildinfo.APIKey)
-	if c.Config.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
-	}
-	
-	utils.Debugf("API Request: %s %s", req.Method, req.URL.String())
-	
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.sendRequest(req, retryOn401, false)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -47,29 +38,7 @@ func (c *Client) doRequest(req *http.Request, retryOn401 bool) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	utils.Debugf("API Response: Status %d %s", resp.StatusCode, resp.Status)
 	utils.Debugf("API Response Body: %s", string(body))
-
-	if resp.StatusCode >= 400 {
-		// 자동 토큰 갱신 로직 처리
-		if resp.StatusCode == http.StatusUnauthorized && retryOn401 && c.Config.RefreshToken != "" {
-			errRefresh := c.Refresh()
-			if errRefresh == nil {
-				// 원본 요청 재시도
-				// GET 요청은 본문이 없어 별도 처리 불필요, POST의 경우 주의 필요
-				// 단순화를 위해 CLI 환경에서 권한 만료 시 토큰 갱신 후 재할당
-				req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
-				return c.doRequest(req, false)
-			}
-		}
-
-		var apiErr APIError
-		if err := json.Unmarshal(body, &apiErr); err == nil && apiErr.Detail != "" {
-			return nil, &apiErr
-		}
-		return nil, fmt.Errorf("API error: status %d - %s", resp.StatusCode, string(body))
-	}
-
 	return body, nil
 }
 
@@ -115,45 +84,7 @@ func (c *Client) patchReq(endpoint string, bodyReader io.Reader) ([]byte, error)
 // 토큰 주입 및 기본 인증 에러 확인 처리
 // 호출자가 반드시 응답 본문을 닫아야 함
 func (c *Client) doRequestStream(req *http.Request, retryOn401 bool) (*http.Response, error) {
-	req.Header.Set("Secret-Key", buildinfo.SecretKey)
-	req.Header.Set("Api-Key", buildinfo.APIKey)
-	if c.Config.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
-	}
-	
-	utils.Debugf("API Request (Stream): %s %s", req.Method, req.URL.String())
-	
-	resp, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-
-	utils.Debugf("API Response (Stream): Status %d %s", resp.StatusCode, resp.Status)
-
-	if resp.StatusCode >= 400 {
-		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
-		
-		if resp.StatusCode == http.StatusUnauthorized && retryOn401 && c.Config.RefreshToken != "" {
-			errRefresh := c.Refresh()
-			if errRefresh == nil {
-				if req.GetBody != nil {
-					newBody, _ := req.GetBody()
-					req.Body = newBody
-				}
-				req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
-				return c.doRequestStream(req, false)
-			}
-		}
-
-		var apiErr APIError
-		if err := json.Unmarshal(body, &apiErr); err == nil && apiErr.Detail != "" {
-			return nil, &apiErr
-		}
-		return nil, fmt.Errorf("API error: status %d - %s", resp.StatusCode, string(body))
-	}
-
-	return resp, nil
+	return c.sendRequest(req, retryOn401, true)
 }
 
 // getStream 스트림을 반환하는 GET 요청 헬퍼
@@ -173,4 +104,107 @@ func (c *Client) postStream(endpoint string, contentType string, bodyReader io.R
 	}
 	req.Header.Set("Content-Type", contentType)
 	return c.doRequestStream(req, true)
+}
+
+func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*http.Response, error) {
+	if err := c.applyAuthHeaders(req); err != nil {
+		return nil, err
+	}
+	c.logRequest(req, stream)
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+
+	c.logResponse(resp, stream)
+	if resp.StatusCode < http.StatusBadRequest {
+		return resp, nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	utils.Debugf("API Error Body: %s", string(body))
+	if c.shouldRetryUnauthorized(resp.StatusCode, retryOn401) {
+		if err := c.retryWithRefresh(req); err == nil {
+			return c.sendRequest(req, false, stream)
+		}
+	}
+
+	return nil, parseAPIError(resp.StatusCode, body)
+}
+
+func (c *Client) applyAuthHeaders(req *http.Request) error {
+	secrets, err := config.LoadRuntimeSecrets()
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Secret-Key", secrets.SecretKey)
+	req.Header.Set("Api-Key", secrets.APIKey)
+	if c.Config.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
+	}
+
+	return nil
+}
+
+func (c *Client) shouldRetryUnauthorized(statusCode int, retryOn401 bool) bool {
+	return statusCode == http.StatusUnauthorized && retryOn401 && c.Config.RefreshToken != ""
+}
+
+func (c *Client) retryWithRefresh(req *http.Request) error {
+	if err := c.Refresh(); err != nil {
+		return err
+	}
+	if err := resetRequestBody(req); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func resetRequestBody(req *http.Request) error {
+	if req.GetBody == nil {
+		return nil
+	}
+
+	body, err := req.GetBody()
+	if err != nil {
+		return fmt.Errorf("failed to reset request body: %w", err)
+	}
+	req.Body = body
+
+	return nil
+}
+
+func parseAPIError(statusCode int, body []byte) error {
+	var apiErr APIError
+	if err := json.Unmarshal(body, &apiErr); err == nil && apiErr.Detail != "" {
+		return &apiErr
+	}
+
+	return fmt.Errorf("API error: status %d - %s", statusCode, string(body))
+}
+
+func (c *Client) logRequest(req *http.Request, stream bool) {
+	if stream {
+		utils.Debugf("API Request (Stream): %s %s", req.Method, req.URL.String())
+		return
+	}
+
+	utils.Debugf("API Request: %s %s", req.Method, req.URL.String())
+}
+
+func (c *Client) logResponse(resp *http.Response, stream bool) {
+	if stream {
+		utils.Debugf("API Response (Stream): Status %d %s", resp.StatusCode, resp.Status)
+		return
+	}
+
+	utils.Debugf("API Response: Status %d %s", resp.StatusCode, resp.Status)
 }

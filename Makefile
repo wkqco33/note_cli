@@ -3,17 +3,11 @@
 # The name of the resulting executable
 BINARY_NAME=note_cli
 
-# Load .env file
-ifneq (,$(wildcard ./.env))
-    include .env
-    export
-endif
-
 # Version info from git tag
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
 # LDFLAGS for injecting build info
-LDFLAGS=-ldflags "-X 'note_cli/config/buildinfo.APIKey=${API_KEY}' -X 'note_cli/config/buildinfo.SecretKey=${SECRET_KEY}' -X 'note_cli/config/buildinfo.Version=${VERSION}'"
+LDFLAGS=-ldflags "-X 'note_cli/config/buildinfo.Version=${VERSION}'"
 
 # Installation prefix
 PREFIX ?= /usr/local

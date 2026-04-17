@@ -1,7 +1,5 @@
 package api
 
-
-
 // TokenResponse 인증 엔드포인트에서 반환된 JWT 토큰 정보
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
@@ -34,14 +32,14 @@ type BoardUpdate struct {
 
 // BoardRead API 응답을 통해 반환된 노트 정보
 type BoardRead struct {
-	ID        int       `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	Category  string    `json:"category"`
-	Images    []string  `json:"images"`
-	OwnerID   int       `json:"owner_id"`
-	CreatedAt string    `json:"created_at"`
-	UpdatedAt string    `json:"updated_at"`
+	ID        int      `json:"id"`
+	Title     string   `json:"title"`
+	Content   string   `json:"content"`
+	Category  string   `json:"category"`
+	Images    []string `json:"images"`
+	OwnerID   int      `json:"owner_id"`
+	CreatedAt string   `json:"created_at"`
+	UpdatedAt string   `json:"updated_at"`
 }
 
 // APIError 서버에서 반환한 오류 구조
