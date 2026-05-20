@@ -168,3 +168,14 @@ func (c *Client) DeleteFile(id int) error {
 	_, err := c.deleteReq(endpoint)
 	return err
 }
+
+// GetFileStream ID로 파일 데이터를 가져오는 Reader와 파일 크기를 반환
+func (c *Client) GetFileStream(fileID int) (io.ReadCloser, int64, error) {
+	endpoint := fmt.Sprintf("/files/download/%d", fileID)
+	resp, err := c.getStream(endpoint)
+	if err != nil {
+		return nil, 0, err
+	}
+	return resp.Body, resp.ContentLength, nil
+}
+
