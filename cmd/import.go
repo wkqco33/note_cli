@@ -40,9 +40,10 @@ var importCmd = &cobra.Command{
 		// notes.json 및 files.json 찾기
 		var notesFile, filesFile *zip.File
 		for _, f := range r.File {
-			if f.Name == "notes.json" {
+			switch f.Name {
+			case "notes.json":
 				notesFile = f
-			} else if f.Name == "files.json" {
+			case "files.json":
 				filesFile = f
 			}
 		}
