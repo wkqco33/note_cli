@@ -20,7 +20,7 @@
 
 ## 요구 사항
 
-- [Go](https://golang.org/) 1.21 이상
+- [Go](https://golang.org/) 1.26 이상 (go.mod의 `go` 지시자 참고)
 - `vim`, `nano` 등의 외부 편집기 (또는 `$EDITOR` 환경변수 설정)
 - 노트 데이터를 저장할 API 서버 (`http://127.0.0.1:8880/api/v1`)
 
@@ -31,16 +31,23 @@
 ## 설치
 
 ```bash
-# 저장소 클론
-git clone https://github.com/wkqco33/note_cli.git
+# 저장소 클론 (서브모듈 포함)
+git clone --recurse-submodules https://github.com/wkqco33/note_cli.git
 cd note_cli
 
-# 빌드 (./note_cli 바이너리 생성)
-make build
+# 이미 클론한 경우 서브모듈 초기화
+git submodule update --init --recursive
+
+# 빌드 (./ncli 바이너리 생성)
+task build
 
 # 또는 Go bin 경로에 설치 (~/.go/bin 또는 $GOPATH/bin)
-make install
+task install
 ```
+
+> **참고**: `view` 명령의 터미널 이미지 렌더링 기능은 [tdraw](https://github.com/wkqco33/tdraw) 서브모듈에
+> 의존합니다. 서브모듈 없이 빌드하면 `go build`가 실패하므로 반드시 `--recurse-submodules`로
+> 클론하거나 `git submodule update --init --recursive`를 실행하세요.
 
 ---
 
@@ -48,16 +55,16 @@ make install
 
 ```bash
 # 1. 계정 등록
-note_cli register
+ncli register
 
 # 2. 로그인
-note_cli login
+ncli login
 
 # 3. 노트 추가
-note_cli add
+ncli add
 
 # 4. 노트 목록 확인
-note_cli list
+ncli list
 ```
 
 ---
@@ -69,7 +76,7 @@ note_cli list
 #### 회원가입
 
 ```bash
-note_cli register
+ncli register
 ```
 
 이름, 이메일, 비밀번호를 입력하는 인터랙티브 폼이 표시됩니다.
@@ -77,7 +84,7 @@ note_cli register
 #### 로그인
 
 ```bash
-note_cli login
+ncli login
 ```
 
 이메일과 비밀번호를 입력하면 인증 토큰이 `~/.config/note_cli/config.yaml`에 저장됩니다.
@@ -89,7 +96,7 @@ note_cli login
 #### 노트 목록 조회
 
 ```bash
-note_cli list
+ncli list
 ```
 
 사용자의 모든 노트를 테이블 형식으로 출력합니다.
@@ -103,7 +110,7 @@ ID   TITLE          CATEGORY   UPDATED
 #### 노트 추가
 
 ```bash
-note_cli add
+ncli add
 ```
 
 제목과 카테고리를 입력하는 폼이 나타난 후, 외부 편집기(기본: `vim`)가 열려 내용을 작성합니다.
@@ -118,7 +125,7 @@ note_cli add
 #### 노트 조회
 
 ```bash
-note_cli view [ID]
+ncli view [ID]
 ```
 
 ID를 입력하지 않을 경우 TUI 목록에서 조회할 노트를 선택할 수 있습니다. 조회 시 노트의 원본 첨부파일 이름과 정보가 함께 표시됩니다.
@@ -126,16 +133,16 @@ ID를 입력하지 않을 경우 TUI 목록에서 조회할 노트를 선택할 
 예시:
 
 ```bash
-note_cli view
-note_cli view 1
+ncli view
+ncli view 1
 ```
 
 #### 노트 및 첨부파일 수정/다운로드/검색
 
 ```bash
-note_cli edit [ID]
-note_cli download [ID]
-note_cli search [flags]
+ncli edit [ID]
+ncli download [ID]
+ncli search [flags]
 ```
 
 - `edit`: 기존 노트의 제목, 카테고리, 내용, 첨부파일을 수정할 수 있습니다. ID 생략 시 TUI 화면에서 수정할 노트를 고를 수 있습니다.
@@ -145,7 +152,7 @@ note_cli search [flags]
 #### 노트 및 첨부파일 삭제
 
 ```bash
-note_cli delete [ID]
+ncli delete [ID]
 ```
 
 원하는 노트 문서 전체를 지우거나, 첨부파일만 개별적으로 선택해 삭제할 수 있습니다. ID 없이 명령어만 실행하면 대화형 UI(TUI)를 통해 안전하게 삭제 대상을 확인 후 선택할 수 있습니다 (`--file` 플래그로 파일 삭제 모드 강제 가능).
@@ -153,9 +160,9 @@ note_cli delete [ID]
 예시:
 
 ```bash
-note_cli delete
-note_cli delete 1
-note_cli delete --file
+ncli delete
+ncli delete 1
+ncli delete --file
 ```
 
 ---
@@ -216,20 +223,23 @@ NOTE_CLI_SECRET_KEY="..."
 
 ### 빌드 및 관련 명령어
 
+이 저장소는 [Taskfile](https://taskfile.dev) 기반으로 빌드/테스트 자동화를 제공합니다. `task` 명령이 필요합니다 (`go install github.com/go-task/task/v3/cmd/task@latest`).
+
 | 명령어 | 설명 |
 | - | - |
-| `make build` | `./note_cli` 바이너리 빌드 |
-| `make install` | Go bin 경로에 설치 |
-| `make run` | 빌드 후 실행 (도움말 표시) |
-| `make test` | 단위 테스트 실행 |
-| `make fmt` | 코드 포맷팅 |
-| `make clean` | 빌드 결과물 삭제 |
-| `make help` | 사용 가능한 명령어 목록 표시 |
+| `task build` | `./ncli` 바이너리 빌드 |
+| `task install` | Go bin 경로에 설치 |
+| `task uninstall` | Go bin 경로에서 제거 |
+| `task run` | 빌드 후 실행 (도움말 표시) |
+| `task test` | 단위 테스트 실행 |
+| `task fmt` | 코드 포맷팅 |
+| `task clean` | 빌드 결과물 삭제 |
+| `task help` | 사용 가능한 명령어 목록 표시 |
 
 ### 테스트 실행
 
 ```bash
-make test
+task test
 # 또는
 go test ./...
 ```
@@ -240,29 +250,49 @@ go test ./...
 
 ```bash
 note_cli/
-├── main.go              # 진입점
-├── go.mod               # Go 모듈 정의
-├── Makefile             # 빌드/테스트 자동화
-├── CLIENT_API_GUIDE.md  # API 명세서 (한국어)
+├── main.go                       # 진입점
+├── go.mod                        # Go 모듈 정의
+├── Taskfile.yml                  # 빌드/테스트 자동화 (task)
+├── CLIENT_API_GUIDE.md           # API 명세서 (한국어)
+├── .github/workflows/release.yml # 태그 기반 크로스플랫폼 릴리스
 ├── api/
-│   ├── client.go        # HTTP 클라이언트 (자동 토큰 갱신 포함)
-│   ├── auth.go          # 인증 관련 API 호출
-│   ├── board.go         # 노트 CRUD API 호출
-│   ├── models.go        # 데이터 구조체 정의
-│   └── api_test.go      # 단위 테스트
+│   ├── client.go                 # HTTP 클라이언트 (자동 토큰 갱신, 타임아웃, 시크릿 캐싱)
+│   ├── auth.go                   # 인증 관련 API 호출
+│   ├── board.go                  # 노트 CRUD API 호출
+│   ├── file.go                   # 파일 업로드/다운로드/삭제 (스트리밍)
+│   ├── models.go                 # 데이터 구조체 및 APIError 정의
+│   ├── api_test.go               # 모델 직렬화 단위 테스트
+│   └── client_test.go            # 401 재시도/스트림/본문 재전송 단위 테스트
 ├── cmd/
-│   ├── root.go          # 루트 명령어 설정 (Cobra)
-│   ├── register.go      # register 명령어
-│   ├── login.go         # login 명령어
-│   ├── add.go           # add 명령어
-│   ├── list.go          # list 명령어
-│   ├── view.go          # view 명령어
-│   ├── edit.go          # edit 명령어
-│   └── delete.go        # delete 명령어
+│   ├── root.go                   # 루트 명령어 (Cobra, RunE 전파)
+│   ├── helpers.go                # 검증/포맷/TUI 선택 공용 헬퍼
+│   ├── helpers_test.go           # 헬퍼 단위 테스트
+│   ├── register.go               # register 명령어
+│   ├── login.go                  # login 명령어
+│   ├── add.go                    # add 명령어
+│   ├── list.go                   # list 명령어
+│   ├── view.go                   # view 명령어 (이미지 렌더링)
+│   ├── edit.go                   # edit 명령어
+│   ├── delete.go                 # delete 명령어 (노트/파일)
+│   ├── download.go               # download 명령어
+│   ├── search.go                 # search 명령어 (제목/내용/파일명)
+│   ├── export.go                 # export 백업 명령어
+│   ├── import.go                 # import 복원 명령어
+│   ├── clean.go                  # 임시 캐시 정리 명령어
+│   ├── version.go                # version 명령어
+│   ├── search_test.go            # 검색 필터링 단위 테스트
+│   ├── export_test.go            # 백업 직렬화 단위 테스트
+│   └── import_test.go            # 복원 매핑/아카이브 탐색 단위 테스트
 ├── config/
-│   └── config.go        # 설정 파일 로드/저장
-└── tui/
-    └── editor.go        # 외부 편집기 연동
+│   ├── config.go                 # 설정 파일 로드/저장 (~/.config/note_cli/config.yaml)
+│   ├── secrets.go                # 런타임 시크릿 해석 (env > .env > 빌드타임 내장)
+│   ├── secrets_test.go           # 시크릿 해석 단위 테스트
+│   └── buildinfo/                # ldflags 주입용 빌드 정보
+├── tui/
+│   └── editor.go                 # 외부 편집기 연동
+├── utils/
+│   └── logger.go                 # slog 기반 디버그 로거
+└── tdraw/                        # 터미널 이미지 렌더링 (git submodule)
 ```
 
 ---
@@ -273,11 +303,16 @@ note_cli/
 | - | - |
 | [cobra](https://github.com/spf13/cobra) | CLI 명령어 프레임워크 |
 | [huh](https://github.com/charmbracelet/huh) | 인터랙티브 TUI 폼 |
-| [bubbletea](https://github.com/charmbracelet/bubbletea) | 터미널 UI 프레임워크 |
 | [lipgloss](https://github.com/charmbracelet/lipgloss) | 터미널 스타일링 |
+| [glamour](https://github.com/charmbracelet/glamour) | Markdown 렌더링 |
+| [progressbar/v3](https://github.com/schollz/progressbar) | 업로드/다운로드 진행률 바 |
+| [humanize](https://github.com/dustin/go-humanize) | 바이트 단위 사람 친화적 표현 |
+| [godotenv](https://github.com/joho/godotenv) | `.env` 파일 로드 |
+| [yaml.v3](https://github.com/go-yaml/yaml) | 설정 파일 직렬화 |
+| [tdraw](https://github.com/wkqco33/tdraw) | 터미널 이미지 렌더링 (submodule) |
 
 ---
 
 ## 라이선스
 
-이 프로젝트의 라이선스 정보는 저장소를 확인하세요.
+이 프로젝트는 [MIT 라이선스](./LICENSE) 하에 배포됩니다.

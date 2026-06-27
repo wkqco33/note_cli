@@ -15,46 +15,41 @@ var editCmd = &cobra.Command{
 	Use:   "edit [id]",
 	Short: "기존 노트 수정",
 	Args:  cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := validateAttachedFiles(editAttachedFiles); err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
 		client, err := newAuthenticatedClient()
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
 		var id int
 		if len(args) == 1 {
 			id, err = parseIDArg(args)
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 		} else {
 			notes, err := client.GetBoards()
 			if err != nil {
-				fmt.Printf("노트 목록을 불러오지 못했습니다: %v\n", err)
-				return
+				return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)
 			}
 			if len(notes) == 0 {
 				fmt.Println("수정할 노트가 없습니다.")
-				return
+				return nil
 			}
 
 			id, err = selectBoardID("수정할 노트를 선택하세요", notes)
 			if err != nil {
 				fmt.Println("취소되었습니다.")
-				return
+				return nil
 			}
 		}
 		note, err := client.GetBoard(id)
 		if err != nil {
-			fmt.Printf("노트를 불러오지 못했습니다: %v\n", err)
-			return
+			return fmt.Errorf("노트를 불러오지 못했습니다: %w", err)
 		}
 
 		title := note.Title
@@ -80,14 +75,13 @@ var editCmd = &cobra.Command{
 
 		if err := form.Run(); err != nil {
 			fmt.Println("수정이 취소되었습니다.")
-			return
+			return nil
 		}
 
 		fmt.Println("노트 내용을 편집기에서 수정합니다...")
 		content, err := tui.OpenEditor(note.Content)
 		if err != nil {
-			fmt.Printf("편집기를 열지 못했습니다: %v\n", err)
-			return
+			return fmt.Errorf("편집기를 열지 못했습니다: %w", err)
 		}
 
 		var imageUrls []string
@@ -100,8 +94,7 @@ var editCmd = &cobra.Command{
 				fmt.Printf("파일 첨부 중: %s\n", f)
 				uploaded, err := client.UploadFile(f)
 				if err != nil {
-					fmt.Printf("업로드 실패 (%s): %v\n", f, err)
-					return
+					return fmt.Errorf("업로드 실패 (%s): %w", f, err)
 				}
 				imageUrls = append(imageUrls, uploaded.URL)
 				fmt.Println("업로드 완료!")
@@ -117,11 +110,11 @@ var editCmd = &cobra.Command{
 
 		updatedBoard, err := client.UpdateBoard(id, update)
 		if err != nil {
-			fmt.Printf("노트를 수정하지 못했습니다: %v\n", err)
-			return
+			return fmt.Errorf("노트를 수정하지 못했습니다: %w", err)
 		}
 
 		fmt.Printf("노트를 수정했습니다. ID: %d\n", updatedBoard.ID)
+		return nil
 	},
 }
 

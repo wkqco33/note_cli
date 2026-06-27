@@ -1,0 +1,75 @@
+version: '3'
+
+vars:
+  BINARY_NAME: ncli
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  PREFIX: /usr/local
+  EMBED_API_KEY: '{{ .NOTE_CLI_API_KEY | default .API_KEY }}'
+  EMBED_SECRET_KEY: '{{ .NOTE_CLI_SECRET_KEY | default .SECRET_KEY }}'
+  LDFLAGS: -ldflags "-X 'note_cli/config/buildinfo.APIKey={{.EMBED_API_KEY}}' -X 'note_cli/config/buildinfo.SecretKey={{.EMBED_SECRET_KEY}}' -X 'note_cli/config/buildinfo.Version={{.VERSION}}'"
+  EXE:
+    sh: '{{if eq OS "windows"}}echo {{.BINARY_NAME}}.exe{{else}}echo {{.BINARY_NAME}}{{end}}'
+
+dotenv: ['.env']
+
+tasks:
+  build:
+    desc: Build the Note CLI binary
+    cmds:
+      - go build {{.LDFLAGS}} -o {{.EXE}} main.go
+    sources:
+      - '**/*.go'
+      - go.mod
+      - go.sum
+    generates:
+      - '{{.EXE}}'
+
+  install:
+    desc: Install the binary to {{.PREFIX}}/bin (Unix)
+    deps: [build]
+    cmds:
+      - mkdir -p {{.PREFIX}}/bin
+      - install -m 755 {{.BINARY_NAME}} {{.PREFIX}}/bin/
+    platforms: [linux, darwin]
+
+  uninstall:
+    desc: Uninstall the binary from {{.PREFIX}}/bin (Unix)
+    cmds:
+      - rm -f {{.PREFIX}}/bin/{{.BINARY_NAME}}
+    platforms: [linux, darwin]
+
+  clean:
+    desc: Remove the built binary and clean build cache
+    cmds:
+      - go clean
+      - cmd: rm -f {{.BINARY_NAME}}
+        platforms: [linux, darwin]
+        ignore_error: true
+      - cmd: powershell -NoProfile -Command "Remove-Item -Force '{{.BINARY_NAME}}','{{.BINARY_NAME}}.exe' -ErrorAction SilentlyContinue"
+        platforms: [windows]
+        ignore_error: true
+
+  test:
+    desc: Run all unit tests
+    cmds:
+      - go test {{.TEST_ARGS | default "-v"}} ./...
+
+  fmt:
+    desc: Format all Go source files
+    cmds:
+      - go fmt ./...
+
+  run:
+    desc: Build and run the application (shows help by default)
+    deps: [build]
+    cmds:
+      - cmd: ./{{.BINARY_NAME}} --help
+        platforms: [linux, darwin]
+      - cmd: powershell -NoProfile -Command "& '.\{{.EXE}}' --help"
+        platforms: [windows]
+
+  help:
+    desc: Show available tasks
+    cmds:
+      - task --list

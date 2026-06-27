@@ -32,6 +32,9 @@ func (c *Client) Login(username, password string) error {
 
 // Refresh 리프레시 토큰을 이용해 새 액세스 토큰 발급 시도
 func (c *Client) Refresh() error {
+	// NOTE: API 스펙(CLIENT_API_GUIDE.md 2.2)이 refresh_token을 query string으로
+	// 받도록 정의되어 있어 따름. 일반적으로 토큰은 URL에 노출되면 로그/프록시에
+	// 유출될 수 있으므로 바람직하지 않으나, 서버 계약 변경 전까지는 유지.
 	endpoint := "/auth/refresh?refresh_token=" + url.QueryEscape(c.Config.RefreshToken)
 
 	// 토큰 갱신 자체에서 401 오류 발생 시 재시도 방지

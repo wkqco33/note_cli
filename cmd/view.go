@@ -35,41 +35,37 @@ var viewCmd = &cobra.Command{
 	Use:   "view [id]",
 	Short: "ID로 노트 조회",
 	Args:  cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := newAuthenticatedClient()
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
 		var id int
 		if len(args) == 1 {
 			id, err = parseIDArg(args)
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 		} else {
 			notes, err := client.GetBoards()
 			if err != nil {
-				fmt.Printf("노트 목록을 불러오지 못했습니다: %v\n", err)
-				return
+				return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)
 			}
 			if len(notes) == 0 {
 				fmt.Println("조회할 노트가 없습니다.")
-				return
+				return nil
 			}
 
 			id, err = selectBoardID("조회할 노트를 선택하세요", notes)
 			if err != nil {
 				fmt.Println("취소되었습니다.")
-				return
+				return nil
 			}
 		}
 		note, err := client.GetBoard(id)
 		if err != nil {
-			fmt.Printf("노트를 불러오지 못했습니다: %v\n", err)
-			return
+			return fmt.Errorf("노트를 불러오지 못했습니다: %w", err)
 		}
 
 		updatedStr := formatTimestamp(note.UpdatedAt, 19)
@@ -150,6 +146,7 @@ var viewCmd = &cobra.Command{
 			}
 			fmt.Println(div)
 		}
+		return nil
 	},
 }
 

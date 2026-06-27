@@ -7,13 +7,28 @@ import (
 	"net/http"
 	"note_cli/config"
 	"note_cli/utils"
+	"sync"
+	"time"
 )
+
+// httpTimeout 대용량 스트리밍 업로드/다운로드(최대 500MB)가 정상 동작하도록
+// 헤더/응답 시작까지의 대기 시간만 제한하고 본문 전송에는 제약을 두지 않는
+// 커스텀 RoundTripper. ResponseHeaderTimeout은 서버가 응답을 시작하기까지
+// 대기하는 최대 시간이며 본문 스트리밍에는 영향을 주지 않는다.
+var httpTransport = &http.Transport{
+	ResponseHeaderTimeout: 30 * time.Second,
+	IdleConnTimeout:       90 * time.Second,
+}
 
 // Client Note App API 통신용 HTTP 클라이언트 래퍼
 type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
 	Config     *config.Config
+
+	secretsOnce sync.Once
+	secrets     config.RuntimeSecrets
+	secretsErr  error
 }
 
 // NewClient 로드된 설정으로 새 API 클라이언트 생성
@@ -21,7 +36,7 @@ func NewClient(cfg *config.Config) *Client {
 	baseURL := fmt.Sprintf("http://%s:%d/api/v1", cfg.Host, cfg.Port)
 	return &Client{
 		BaseURL:    baseURL,
-		HTTPClient: &http.Client{},
+		HTTPClient: &http.Client{Transport: httpTransport},
 		Config:     cfg,
 	}
 }
@@ -139,13 +154,17 @@ func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*
 }
 
 func (c *Client) applyAuthHeaders(req *http.Request) error {
-	secrets, err := config.LoadRuntimeSecrets()
-	if err != nil {
-		return err
+	// 시크릿은 프로세스 수명 동안 불변하므로 최초 1회만 로드하여 캐싱.
+	// 매 요청마다 .env 디스크 읽기를 반복하지 않도록 sync.Once로 보호.
+	c.secretsOnce.Do(func() {
+		c.secrets, c.secretsErr = config.LoadRuntimeSecrets()
+	})
+	if c.secretsErr != nil {
+		return c.secretsErr
 	}
 
-	req.Header.Set("Secret-Key", secrets.SecretKey)
-	req.Header.Set("Api-Key", secrets.APIKey)
+	req.Header.Set("Secret-Key", c.secrets.SecretKey)
+	req.Header.Set("Api-Key", c.secrets.APIKey)
 	if c.Config.AccessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
 	}

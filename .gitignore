@@ -1,6 +1,13 @@
 .tmp/
 .env
 note_cli
+ncli
+
+# 외부 도구 메타데이터 (개인 홈경로 하드코딩 방지)
+.antigravitycli/
+
+# Taskfile 캐시
+.task/
 
 # Created by https://www.toptal.com/developers/gitignore/api/go,visualstudiocode,linux,macos,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=go,visualstudiocode,linux,macos,windows

@@ -13,6 +13,10 @@ var rootCmd = &cobra.Command{
 	Use:   "note_cli",
 	Short: "간단한 CLI 노트 애플리케이션",
 	Long:  `Note CLI는 원격 API를 사용하는 빠르고 간단한 터미널 기반 노트 에디터입니다.`,
+	// 명령 RunE가 반환한 에러는 Execute()에서 stderr로 출력하고 비정상 종료하므로
+	// Cobra가 에러/사용법을 중복 인쇄하지 않도록 억제
+	SilenceErrors: true,
+	SilenceUsage:  true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		debug, _ := cmd.Flags().GetBool("debug")
 		utils.DebugMode = debug

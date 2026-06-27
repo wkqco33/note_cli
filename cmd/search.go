@@ -20,11 +20,10 @@ var (
 var searchCmd = &cobra.Command{
 	Use:   "search",
 	Short: "노트 검색 (제목, 내용, 파일명)",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := newAuthenticatedClient()
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
 		// 플래그가 하나도 입력되지 않았을 경우 TUI 표시
@@ -56,7 +55,7 @@ var searchCmd = &cobra.Command{
 
 			if err := form.Run(); err != nil {
 				fmt.Println("검색이 취소되었습니다.")
-				return
+				return nil
 			}
 
 			switch searchType {
@@ -71,66 +70,24 @@ var searchCmd = &cobra.Command{
 
 		notes, err := client.GetBoards()
 		if err != nil {
-			fmt.Printf("노트 목록을 불러오지 못했습니다: %v\n", err)
-			return
+			return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)
 		}
 
 		var files []api.FileRead
 		if searchFile != "" {
 			files, err = client.GetFiles()
 			if err != nil {
-				fmt.Printf("검색용 파일 목록을 불러오지 못했습니다: %v\n", err)
-				return
-			}
-		}
-
-		// URL을 통해 파일명을 찾기 위한 맵 생성
-		urlToFilename := make(map[string]string)
-		if searchFile != "" {
-			for _, f := range files {
-				urlToFilename[f.URL] = displayFileName(f)
+				return fmt.Errorf("검색용 파일 목록을 불러오지 못했습니다: %w", err)
 			}
 		}
 
 		var results []api.BoardRead
 
-		for _, note := range notes {
-			match := true
-
-			// 1. 제목 검색
-			if searchTitle != "" && !strings.Contains(strings.ToLower(note.Title), strings.ToLower(searchTitle)) {
-				match = false
-			}
-			// 2. 내용 검색
-			if searchContent != "" && !strings.Contains(strings.ToLower(note.Content), strings.ToLower(searchContent)) {
-				match = false
-			}
-			// 3. 첨부파일 검색
-			if searchFile != "" {
-				fileMatch := false
-				for _, imgUrl := range note.Images {
-					filename := urlToFilename[imgUrl]
-					if filename == "" {
-						filename = fileNameFromURL(imgUrl)
-					}
-					if strings.Contains(strings.ToLower(filename), strings.ToLower(searchFile)) {
-						fileMatch = true
-						break
-					}
-				}
-				if !fileMatch {
-					match = false
-				}
-			}
-
-			if match {
-				results = append(results, note)
-			}
-		}
+		results = filterBoards(notes, files, searchTitle, searchContent, searchFile)
 
 		if len(results) == 0 {
 			fmt.Println("검색 결과가 없습니다.")
-			return
+			return nil
 		}
 
 		fmt.Printf("총 %d개의 노트를 찾았습니다.\n", len(results))
@@ -140,7 +97,60 @@ var searchCmd = &cobra.Command{
 			fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", note.ID, truncateText(note.Title, 40), note.Category, formatTimestamp(note.UpdatedAt, 16))
 		}
 		w.Flush()
+		return nil
 	},
+}
+
+// buildURLToFilename 파일 목록에서 URL -> 표시 파일명 맵을 생성
+func buildURLToFilename(files []api.FileRead) map[string]string {
+	m := make(map[string]string, len(files))
+	for _, f := range files {
+		m[f.URL] = displayFileName(f)
+	}
+	return m
+}
+
+// filterBoards 제목/내용/첨부파일명 조건으로 노트를 필터링.
+// 빈 조건은 해당 조건을 무시(모두 매칭)한다. 검색어는 대소문자 구분 없이 부분 일치.
+func filterBoards(notes []api.BoardRead, files []api.FileRead, titleQuery, contentQuery, fileQuery string) []api.BoardRead {
+	if titleQuery == "" && contentQuery == "" && fileQuery == "" {
+		return append([]api.BoardRead(nil), notes...)
+	}
+
+	urlToFilename := buildURLToFilename(files)
+	titleLower := strings.ToLower(titleQuery)
+	contentLower := strings.ToLower(contentQuery)
+	fileLower := strings.ToLower(fileQuery)
+
+	var results []api.BoardRead
+	for _, note := range notes {
+		if titleQuery != "" && !strings.Contains(strings.ToLower(note.Title), titleLower) {
+			continue
+		}
+		if contentQuery != "" && !strings.Contains(strings.ToLower(note.Content), contentLower) {
+			continue
+		}
+		if fileQuery != "" {
+			if !boardMatchesFile(note, urlToFilename, fileLower) {
+				continue
+			}
+		}
+		results = append(results, note)
+	}
+	return results
+}
+
+func boardMatchesFile(note api.BoardRead, urlToFilename map[string]string, fileLower string) bool {
+	for _, imgUrl := range note.Images {
+		filename := urlToFilename[imgUrl]
+		if filename == "" {
+			filename = fileNameFromURL(imgUrl)
+		}
+		if strings.Contains(strings.ToLower(filename), fileLower) {
+			return true
+		}
+	}
+	return false
 }
 
 func init() {
