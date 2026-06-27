@@ -168,3 +168,19 @@ CLI 앱을 처음 사용하는 사용자를 등록합니다.
 - `403 Forbidden`: 본인이 작성하지 않은 메모에 대한 수정/삭제 시도.
 - `404 Not Found`: 존재하지 않는 메모 ID 요청.
 - `422 Unprocessable Entity`: 필수 필드 누락 또는 데이터 형식 오류.
+
+---
+
+## 8. 클라이언트 사이드 기능 참고
+
+본 가이드는 서버 API 명세만 다루며, 아래 기능은 서버에 전용 엔드포인트가 없고
+클라이언트가 기존 API를 조합해 구현한 것이다. 따라서 데이터가 많아지면
+네트워크 비용이 선형으로 증가하므로 대량 데이터에서는 주의가 필요하다.
+
+- **검색(`search`)**: `GET /boards/me`(필요 시 `GET /files` 포함)로 전체를
+  내려받은 뒤 클라이언트 메모리에서 제목/내용/파일명 부분 일치 필터링.
+- **백업 내보내기(`export`)**: `GET /boards/me`, `GET /files` 결과와
+  `GET /files/download/{id}` 스트림을 ZIP으로 묶어 로컬에 저장.
+- **복원(`import`)**: ZIP 내 `notes.json`/`files.json`을 파싱 후 파일은
+  `POST /files/upload`로 재업로드하고, 얻은 새 URL로 노트를 `POST /boards`
+  로 재생성. `--clean` 시 기존 노트/파일을 `DELETE`로 일괄 삭제 후 복원.

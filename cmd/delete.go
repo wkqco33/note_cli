@@ -13,11 +13,10 @@ var deleteCmd = &cobra.Command{
 	Use:   "delete [id]",
 	Short: "노트 또는 첨부파일 삭제",
 	Args:  cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := newAuthenticatedClient()
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
 		target := "note"
@@ -38,34 +37,32 @@ var deleteCmd = &cobra.Command{
 				Run()
 			if err != nil {
 				fmt.Println("취소되었습니다.")
-				return
+				return nil
 			}
 
 			if target == "note" {
 				notes, err := client.GetBoards()
 				if err != nil {
-					fmt.Printf("노트 목록을 불러오지 못했습니다: %v\n", err)
-					return
+					return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)
 				}
 				if len(notes) == 0 {
 					fmt.Println("삭제할 노트가 없습니다.")
-					return
+					return nil
 				}
 
 				id, err = selectBoardID("삭제할 노트를 선택하세요", notes)
 				if err != nil {
 					fmt.Println("취소되었습니다.")
-					return
+					return nil
 				}
 			} else {
 				files, err := client.GetFiles()
 				if err != nil {
-					fmt.Printf("파일 목록을 불러오지 못했습니다: %v\n", err)
-					return
+					return fmt.Errorf("파일 목록을 불러오지 못했습니다: %w", err)
 				}
 				if len(files) == 0 {
 					fmt.Println("삭제할 파일이 없습니다.")
-					return
+					return nil
 				}
 
 				boards, err := client.GetBoards()
@@ -77,14 +74,13 @@ var deleteCmd = &cobra.Command{
 				id, err = selectFileID("삭제할 파일을 선택하세요", files, boardMap)
 				if err != nil {
 					fmt.Println("취소되었습니다.")
-					return
+					return nil
 				}
 			}
 		} else {
 			id, err = parseIDArg(args)
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 		}
 
@@ -98,24 +94,21 @@ var deleteCmd = &cobra.Command{
 
 		if err != nil || !confirm {
 			fmt.Println("삭제가 취소되었습니다.")
-			return
+			return nil
 		}
 
 		if target == "note" {
-			err = client.DeleteBoard(id)
-			if err != nil {
-				fmt.Printf("노트를 삭제하지 못했습니다: %v\n", err)
-				return
+			if err := client.DeleteBoard(id); err != nil {
+				return fmt.Errorf("노트를 삭제하지 못했습니다: %w", err)
 			}
 			fmt.Printf("노트를 삭제했습니다. ID: %d\n", id)
 		} else {
-			err = client.DeleteFile(id)
-			if err != nil {
-				fmt.Printf("파일을 삭제하지 못했습니다: %v\n", err)
-				return
+			if err := client.DeleteFile(id); err != nil {
+				return fmt.Errorf("파일을 삭제하지 못했습니다: %w", err)
 			}
 			fmt.Printf("파일을 삭제했습니다. ID: %d\n", id)
 		}
+		return nil
 	},
 }
 

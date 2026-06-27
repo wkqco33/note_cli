@@ -31,21 +31,20 @@ jobs:
           NOTE_CLI_API_KEY: ${{ secrets.API_KEY }}
           NOTE_CLI_SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
-          REPO_NAME=$(basename ${{ github.repository }})
-          BINARY_NAME=$REPO_NAME
+          BINARY_NAME=ncli
 
           if [ "${{ matrix.goos }}" = "windows" ]; then
-            BINARY_NAME="${REPO_NAME}.exe"
+            BINARY_NAME="ncli.exe"
           fi
 
-          # 크로스플랫폼 빌드
+          # 크로스플랫폼 빌드 (ppm.json bin_name 과 일치하는 ncli 로 산출물명 고정)
           go build -ldflags="-s -w -X 'note_cli/config/buildinfo.APIKey=${NOTE_CLI_API_KEY}' -X 'note_cli/config/buildinfo.SecretKey=${NOTE_CLI_SECRET_KEY}' -X 'note_cli/config/buildinfo.Version=${GITHUB_REF_NAME}'" -o "$BINARY_NAME" main.go
 
-          # 아카이브 생성 (바이너리 이름은 레포지토리 이름 유지)
+          # 아카이브 생성
           if [ "${{ matrix.goos }}" = "windows" ]; then
-            zip "${REPO_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}.zip" "$BINARY_NAME"
+            zip "ncli_${{ matrix.goos }}_${{ matrix.goarch }}.zip" "$BINARY_NAME"
           else
-            tar -czvf "${REPO_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz" "$BINARY_NAME"
+            tar -czvf "ncli_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz" "$BINARY_NAME"
           fi
 
       - name: Create Release

@@ -178,4 +178,3 @@ func (c *Client) GetFileStream(fileID int) (io.ReadCloser, int64, error) {
 	}
 	return resp.Body, resp.ContentLength, nil
 }
-

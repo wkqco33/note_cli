@@ -10,7 +10,7 @@ import (
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Note API 로그인",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var email, password string
 
 		form := huh.NewForm(
@@ -40,22 +40,20 @@ var loginCmd = &cobra.Command{
 		err := form.Run()
 		if err != nil {
 			fmt.Println("로그인이 취소되었습니다.")
-			return
+			return nil
 		}
 
 		client, err := newClient()
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
-		err = client.Login(email, password)
-		if err != nil {
-			fmt.Printf("로그인에 실패했습니다: %v\n", err)
-			return
+		if err := client.Login(email, password); err != nil {
+			return fmt.Errorf("로그인에 실패했습니다: %w", err)
 		}
 
 		fmt.Println("로그인했습니다.")
+		return nil
 	},
 }
 

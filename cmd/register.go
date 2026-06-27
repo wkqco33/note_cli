@@ -11,7 +11,7 @@ import (
 var registerCmd = &cobra.Command{
 	Use:   "register",
 	Short: "새 사용자 계정 등록",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var name, email, password string
 
 		form := huh.NewForm(
@@ -50,13 +50,12 @@ var registerCmd = &cobra.Command{
 		err := form.Run()
 		if err != nil {
 			fmt.Println("회원가입이 취소되었습니다.")
-			return
+			return nil
 		}
 
 		client, err := newClient()
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
 		user := api.UserCreate{
@@ -65,13 +64,12 @@ var registerCmd = &cobra.Command{
 			Password: password,
 		}
 
-		err = client.Register(user)
-		if err != nil {
-			fmt.Printf("회원가입에 실패했습니다: %v\n", err)
-			return
+		if err := client.Register(user); err != nil {
+			return fmt.Errorf("회원가입에 실패했습니다: %w", err)
 		}
 
 		fmt.Println("회원가입이 완료되었습니다. 이제 'note_cli login'으로 로그인하세요.")
+		return nil
 	},
 }
 

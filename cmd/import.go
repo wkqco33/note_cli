@@ -19,11 +19,10 @@ var importCmd = &cobra.Command{
 	Short: "백업 파일에서 노트 및 첨부파일 복원",
 	Long:  `지정된 ZIP 백업 아카이브에서 노트와 첨부파일을 가져와 서버에 복원합니다.`,
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := newAuthenticatedClient()
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
 		importPath := args[0]
@@ -32,52 +31,38 @@ var importCmd = &cobra.Command{
 		// 1. zip 아카이브 열기
 		r, err := zip.OpenReader(importPath)
 		if err != nil {
-			fmt.Printf("백업 파일을 열 수 없습니다: %v\n", err)
-			return
+			return fmt.Errorf("백업 파일을 열 수 없습니다: %w", err)
 		}
 		defer r.Close()
 
 		// notes.json 및 files.json 찾기
-		var notesFile, filesFile *zip.File
-		for _, f := range r.File {
-			switch f.Name {
-			case "notes.json":
-				notesFile = f
-			case "files.json":
-				filesFile = f
-			}
-		}
+		notesFile, filesFile := findBackupEntries(r.File)
 
 		if notesFile == nil || filesFile == nil {
-			fmt.Println("오류: 올바른 백업 파일 형식이 아닙니다 (notes.json 또는 files.json 누락)")
-			return
+			return fmt.Errorf("올바른 백업 파일 형식이 아닙니다 (notes.json 또는 files.json 누락)")
 		}
 
 		// notes.json 파싱
 		notesReader, err := notesFile.Open()
 		if err != nil {
-			fmt.Printf("notes.json 열기 실패: %v\n", err)
-			return
+			return fmt.Errorf("notes.json 열기 실패: %w", err)
 		}
 		var boards []api.BoardRead
 		if err := json.NewDecoder(notesReader).Decode(&boards); err != nil {
 			notesReader.Close()
-			fmt.Printf("notes.json 파싱 실패: %v\n", err)
-			return
+			return fmt.Errorf("notes.json 파싱 실패: %w", err)
 		}
 		notesReader.Close()
 
 		// files.json 파싱
 		filesReader, err := filesFile.Open()
 		if err != nil {
-			fmt.Printf("files.json 열기 실패: %v\n", err)
-			return
+			return fmt.Errorf("files.json 열기 실패: %w", err)
 		}
 		var backupFiles []api.FileRead
 		if err := json.NewDecoder(filesReader).Decode(&backupFiles); err != nil {
 			filesReader.Close()
-			fmt.Printf("files.json 파싱 실패: %v\n", err)
-			return
+			return fmt.Errorf("files.json 파싱 실패: %w", err)
 		}
 		filesReader.Close()
 
@@ -121,13 +106,7 @@ var importCmd = &cobra.Command{
 			fmt.Println("첨부파일 복원 시작...")
 			for _, bf := range backupFiles {
 				entryPath := fmt.Sprintf("files/%d_%s", bf.ID, bf.OriginalFilename)
-				var zipEntry *zip.File
-				for _, f := range r.File {
-					if f.Name == entryPath {
-						zipEntry = f
-						break
-					}
-				}
+				zipEntry := findBackupFileEntry(r.File, entryPath)
 
 				if zipEntry == nil {
 					fmt.Printf("경고: 백업본 내부에서 파일을 찾을 수 없습니다: %s. 건너뜁니다.\n", entryPath)
@@ -137,8 +116,7 @@ var importCmd = &cobra.Command{
 				// 임시 파일 생성
 				tmpFile, err := os.CreateTemp("", "note_cli_restore_*")
 				if err != nil {
-					fmt.Printf("임시 파일 생성 실패: %v\n", err)
-					return
+					return fmt.Errorf("임시 파일 생성 실패: %w", err)
 				}
 				tmpPath := tmpFile.Name()
 
@@ -147,8 +125,7 @@ var importCmd = &cobra.Command{
 				if err != nil {
 					tmpFile.Close()
 					os.Remove(tmpPath)
-					fmt.Printf("백업 파일 읽기 실패 (%s): %v\n", entryPath, err)
-					return
+					return fmt.Errorf("백업 파일 읽기 실패 (%s): %w", entryPath, err)
 				}
 
 				_, err = io.Copy(tmpFile, entryReader)
@@ -156,8 +133,7 @@ var importCmd = &cobra.Command{
 				tmpFile.Close()
 				if err != nil {
 					os.Remove(tmpPath)
-					fmt.Printf("임시 파일 쓰기 실패: %v\n", err)
-					return
+					return fmt.Errorf("임시 파일 쓰기 실패: %w", err)
 				}
 
 				// 업로드
@@ -177,25 +153,10 @@ var importCmd = &cobra.Command{
 
 		// 3. 노트 복원
 		fmt.Println("노트 복원 시작...")
-		for _, b := range boards {
-			var newImages []string
-			for _, img := range b.Images {
-				if newURL, ok := oldURLToNewURL[img]; ok {
-					newImages = append(newImages, newURL)
-				} else {
-					newImages = append(newImages, img)
-				}
-			}
-
-			newBoard := api.BoardCreate{
-				Title:    b.Title,
-				Content:  b.Content,
-				Category: b.Category,
-				Images:   newImages,
-			}
-
+		restored := rebuildBoardsForRestore(boards, oldURLToNewURL)
+		for _, b := range restored {
 			fmt.Printf("노트 생성 중: %s... ", b.Title)
-			created, err := client.CreateBoard(newBoard)
+			created, err := client.CreateBoard(b)
 			if err != nil {
 				fmt.Printf("실패 (%v)\n", err)
 			} else {
@@ -204,7 +165,64 @@ var importCmd = &cobra.Command{
 		}
 
 		fmt.Println("복원이 성공적으로 완료되었습니다!")
+		return nil
 	},
+}
+
+// rebuildBoardsForRestore 백업된 노트의 images URL을 새 업로드 URL로 치환하여
+// 생성 페이로드 슬라이스를 반환. 매핑에 없는 URL은 원본 그대로 유지.
+func rebuildBoardsForRestore(boards []api.BoardRead, urlMapping map[string]string) []api.BoardCreate {
+	restored := make([]api.BoardCreate, 0, len(boards))
+	for _, b := range boards {
+		newImages := remapImageURLs(b.Images, urlMapping)
+		restored = append(restored, api.BoardCreate{
+			Title:    b.Title,
+			Content:  b.Content,
+			Category: b.Category,
+			Images:   newImages,
+		})
+	}
+	return restored
+}
+
+// remapImageURLs URL 리스트를 새 URL로 매핑. 매핑에 없으면 원본 유지.
+func remapImageURLs(images []string, urlMapping map[string]string) []string {
+	if len(images) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(images))
+	for _, img := range images {
+		if newURL, ok := urlMapping[img]; ok {
+			out = append(out, newURL)
+		} else {
+			out = append(out, img)
+		}
+	}
+	return out
+}
+
+// findBackupEntries ZIP 아카이브에서 notes.json과 files.json 엔트리를 찾는다.
+// 둘 중 하나라도 없으면 nil을 반환할 수 있다.
+func findBackupEntries(files []*zip.File) (notesFile *zip.File, filesFile *zip.File) {
+	for _, f := range files {
+		switch f.Name {
+		case "notes.json":
+			notesFile = f
+		case "files.json":
+			filesFile = f
+		}
+	}
+	return notesFile, filesFile
+}
+
+// findBackupFileEntry 백업 파일 엔트리 경로(files/<id>_<origname>)로 ZIP 엔트리를 찾는다.
+func findBackupFileEntry(files []*zip.File, entryPath string) *zip.File {
+	for _, f := range files {
+		if f.Name == entryPath {
+			return f
+		}
+	}
+	return nil
 }
 
 func init() {
