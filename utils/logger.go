@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -9,36 +10,34 @@ import (
 // DebugMode determines if debug logs should be printed
 var DebugMode bool
 
-var logger *slog.Logger
+// logLevel 로거 재생성 없이 출력 레벨을 전환하기 위한 동적 레벨 (기본 Info)
+var logLevel = new(slog.LevelVar)
 
-func init() {
-	// 기본 로거는 Info 레벨로 설정하여 Debug 로그를 무시하도록 합니다.
-	logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-}
+var logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	Level: logLevel,
+}))
 
 // SetupLogger는 DebugMode 값에 따라 로거의 출력 레벨을 재설정합니다.
 func SetupLogger() {
-	opts := &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}
 	if DebugMode {
-		opts.Level = slog.LevelDebug
+		logLevel.Set(slog.LevelDebug)
+		return
 	}
-	logger = slog.New(slog.NewTextHandler(os.Stderr, opts))
+	logLevel.Set(slog.LevelInfo)
 }
 
 // Debugf prints formatted debug logs if DebugMode is true
 func Debugf(format string, v ...interface{}) {
-	if DebugMode {
-		logger.Debug(fmt.Sprintf(format, v...))
+	if !logger.Enabled(context.Background(), slog.LevelDebug) {
+		return
 	}
+	logger.Debug(fmt.Sprintf(format, v...))
 }
 
 // Debugln prints debug logs if DebugMode is true
 func Debugln(v ...interface{}) {
-	if DebugMode {
-		logger.Debug(fmt.Sprint(v...))
+	if !logger.Enabled(context.Background(), slog.LevelDebug) {
+		return
 	}
+	logger.Debug(fmt.Sprint(v...))
 }

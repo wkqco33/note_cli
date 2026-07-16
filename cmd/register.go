@@ -19,31 +19,16 @@ var registerCmd = &cobra.Command{
 				huh.NewInput().
 					Title("이름").
 					Value(&name).
-					Validate(func(str string) error {
-						if str == "" {
-							return fmt.Errorf("이름을 입력해야 합니다")
-						}
-						return nil
-					}),
+					Validate(requiredInput("이름을 입력해야 합니다")),
 				huh.NewInput().
 					Title("이메일").
 					Value(&email).
-					Validate(func(str string) error {
-						if str == "" {
-							return fmt.Errorf("이메일을 입력해야 합니다")
-						}
-						return nil
-					}),
+					Validate(requiredInput("이메일을 입력해야 합니다")),
 				huh.NewInput().
 					Title("비밀번호").
 					EchoMode(huh.EchoModePassword).
 					Value(&password).
-					Validate(func(str string) error {
-						if str == "" {
-							return fmt.Errorf("비밀번호를 입력해야 합니다")
-						}
-						return nil
-					}),
+					Validate(requiredInput("비밀번호를 입력해야 합니다")),
 			),
 		)
 
@@ -68,7 +53,7 @@ var registerCmd = &cobra.Command{
 			return fmt.Errorf("회원가입에 실패했습니다: %w", err)
 		}
 
-		fmt.Println("회원가입이 완료되었습니다. 이제 'note_cli login'으로 로그인하세요.")
+		fmt.Printf("회원가입이 완료되었습니다. 이제 '%s login'으로 로그인하세요.\n", binaryName())
 		return nil
 	},
 }

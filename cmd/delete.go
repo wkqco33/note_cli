@@ -41,40 +41,16 @@ var deleteCmd = &cobra.Command{
 			}
 
 			if target == "note" {
-				notes, err := client.GetBoards()
-				if err != nil {
-					return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)
-				}
-				if len(notes) == 0 {
-					fmt.Println("삭제할 노트가 없습니다.")
-					return nil
-				}
-
-				id, err = selectBoardID("삭제할 노트를 선택하세요", notes)
-				if err != nil {
-					fmt.Println("취소되었습니다.")
-					return nil
+				var ok bool
+				id, ok, err = resolveBoardID(client, nil, "삭제할 노트를 선택하세요", "삭제할 노트가 없습니다.")
+				if err != nil || !ok {
+					return err
 				}
 			} else {
-				files, err := client.GetFiles()
-				if err != nil {
-					return fmt.Errorf("파일 목록을 불러오지 못했습니다: %w", err)
-				}
-				if len(files) == 0 {
-					fmt.Println("삭제할 파일이 없습니다.")
-					return nil
-				}
-
-				boards, err := client.GetBoards()
-				boardMap := map[string]string{}
-				if err == nil {
-					boardMap = boardTitleByFileName(boards)
-				}
-
-				id, err = selectFileID("삭제할 파일을 선택하세요", files, boardMap)
-				if err != nil {
-					fmt.Println("취소되었습니다.")
-					return nil
+				var ok bool
+				id, _, ok, err = resolveFileID(client, "삭제할 파일을 선택하세요", "삭제할 파일이 없습니다.")
+				if err != nil || !ok {
+					return err
 				}
 			}
 		} else {

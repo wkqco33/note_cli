@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -12,6 +13,9 @@ type Config struct {
 	Port         int    `yaml:"port"`
 	AccessToken  string `yaml:"access_token,omitempty"`
 	RefreshToken string `yaml:"refresh_token,omitempty"`
+	AutoLogin    bool   `yaml:"auto_login,omitempty"`
+	Username     string `yaml:"username,omitempty"`
+	Password     string `yaml:"password,omitempty"`
 }
 
 func getConfigPath() (string, error) {
@@ -26,6 +30,11 @@ func getConfigPath() (string, error) {
 	}
 
 	return filepath.Join(configDir, "config.yaml"), nil
+}
+
+// Path returns the config file path (~/.config/note_cli/config.yaml)
+func Path() (string, error) {
+	return getConfigPath()
 }
 
 // Load reads the config file from ~/.config/note_cli/config.yaml
@@ -56,6 +65,8 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	decodeSecretFields(&cfg)
+
 	// 기존 설정에 Host/Port가 없는 경우 기본값 채우기 (선택적)
 	if cfg.Host == "" {
 		cfg.Host = "127.0.0.1"
@@ -68,16 +79,62 @@ func Load() (*Config, error) {
 }
 
 // Save writes the config to ~/.config/note_cli/config.yaml
+// 토큰과 비밀번호는 평문 대신 암호화된 형태로 기록한다.
 func Save(cfg *Config) error {
 	path, err := getConfigPath()
 	if err != nil {
 		return err
 	}
 
-	data, err := yaml.Marshal(cfg)
+	toSave := *cfg
+	if err := encodeSecretFields(&toSave); err != nil {
+		return err
+	}
+
+	data, err := yaml.Marshal(&toSave)
 	if err != nil {
 		return err
 	}
 
 	return os.WriteFile(path, data, 0600)
+}
+
+// secretFields 암호화 대상 필드 목록 (액세스/리프레시 토큰, 자동 로그인 비밀번호)
+func secretFields(cfg *Config) map[string]*string {
+	return map[string]*string{
+		"access_token":  &cfg.AccessToken,
+		"refresh_token": &cfg.RefreshToken,
+		"password":      &cfg.Password,
+	}
+}
+
+func encodeSecretFields(cfg *Config) error {
+	for name, value := range secretFields(cfg) {
+		encrypted, err := encodeSecret(*value)
+		if err != nil {
+			return fmt.Errorf("%s 값을 암호화하지 못했습니다: %w", name, err)
+		}
+		*value = encrypted
+	}
+
+	return nil
+}
+
+// decodeSecretFields 저장된 비밀값 복호화. 다른 사용자/컴퓨터에서 복사된 설정 등으로
+// 복호화가 불가능한 필드는 초기화하고 계속 진행한다 (재로그인으로 복구 가능).
+func decodeSecretFields(cfg *Config) {
+	cleared := false
+	for _, value := range secretFields(cfg) {
+		plain, err := decodeSecret(*value)
+		if err != nil {
+			*value = ""
+			cleared = true
+			continue
+		}
+		*value = plain
+	}
+
+	if cleared {
+		fmt.Fprintln(os.Stderr, "경고: 저장된 인증 정보를 복호화하지 못해 초기화했습니다. 'login' 명령으로 다시 로그인하세요.")
+	}
 }

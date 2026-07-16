@@ -18,22 +18,12 @@ var loginCmd = &cobra.Command{
 				huh.NewInput().
 					Title("이메일").
 					Value(&email).
-					Validate(func(str string) error {
-						if str == "" {
-							return fmt.Errorf("이메일을 입력해야 합니다")
-						}
-						return nil
-					}),
+					Validate(requiredInput("이메일을 입력해야 합니다")),
 				huh.NewInput().
 					Title("비밀번호").
 					EchoMode(huh.EchoModePassword).
 					Value(&password).
-					Validate(func(str string) error {
-						if str == "" {
-							return fmt.Errorf("비밀번호를 입력해야 합니다")
-						}
-						return nil
-					}),
+					Validate(requiredInput("비밀번호를 입력해야 합니다")),
 			),
 		)
 
@@ -48,11 +38,21 @@ var loginCmd = &cobra.Command{
 			return err
 		}
 
+		// 자동 로그인이 켜져 있으면 로그인 성공 시 계정 정보도 함께 저장
+		// (Login 내부의 config.Save가 토큰과 같이 기록)
+		if client.Config.AutoLogin {
+			client.Config.Username = email
+			client.Config.Password = password
+		}
+
 		if err := client.Login(email, password); err != nil {
 			return fmt.Errorf("로그인에 실패했습니다: %w", err)
 		}
 
 		fmt.Println("로그인했습니다.")
+		if client.Config.AutoLogin {
+			fmt.Println("자동 로그인용 계정 정보를 저장했습니다.")
+		}
 		return nil
 	},
 }

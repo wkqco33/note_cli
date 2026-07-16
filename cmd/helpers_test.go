@@ -54,6 +54,22 @@ func TestTruncateText(t *testing.T) {
 	}
 }
 
+func TestTruncateTextKorean(t *testing.T) {
+	// 한글은 표시 폭 2칸. 바이트 기준으로 자르면 문자가 깨지므로 폭 기준으로 잘라야 한다.
+	got := truncateText("가나다라마바사", 9)
+	if got != "가나다..." {
+		t.Fatalf("unexpected truncated text: %q", got)
+	}
+	if strings.Contains(got, "�") {
+		t.Fatalf("truncated text contains replacement character: %q", got)
+	}
+
+	// 폭이 충분하면 그대로 반환
+	if got := truncateText("가나다", 10); got != "가나다" {
+		t.Fatalf("unexpected text: %q", got)
+	}
+}
+
 func TestFormatTimestamp(t *testing.T) {
 	got := formatTimestamp("2026-04-17T09:00:30Z", 16)
 	if got != "2026-04-17 09:00" {

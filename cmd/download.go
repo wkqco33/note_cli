@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
+
+	"note_cli/api"
+
+	"github.com/spf13/cobra"
 )
 
 var downloadCmd = &cobra.Command{
@@ -17,37 +20,21 @@ var downloadCmd = &cobra.Command{
 		}
 
 		var id int
+		var filename string
 		if len(args) == 1 {
 			id, err = parseIDArg(args)
 			if err != nil {
 				return err
 			}
-		}
-
-		var filename string
-		if len(args) != 1 {
-			files, err := client.GetFiles()
-			if err != nil {
-				return fmt.Errorf("파일 목록을 불러오지 못했습니다: %w", err)
+		} else {
+			var files []api.FileRead
+			var ok bool
+			id, files, ok, err = resolveFileID(client, "다운로드할 파일을 선택하세요", "다운로드할 파일이 없습니다.")
+			if err != nil || !ok {
+				return err
 			}
 
-			if len(files) == 0 {
-				fmt.Println("다운로드할 파일이 없습니다.")
-				return nil
-			}
-
-			boards, err := client.GetBoards()
-			if err != nil {
-				return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)
-			}
-
-			id, err = selectFileID("다운로드할 파일을 선택하세요", files, boardTitleByFileName(boards))
-			if err != nil {
-				fmt.Println("취소되었습니다.")
-				return nil
-			}
-
-			if file, ok := findFileByID(files, id); ok {
+			if file, found := findFileByID(files, id); found {
 				filename = displayFileName(file)
 			}
 		}

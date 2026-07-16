@@ -3,9 +3,7 @@ package cmd
 import (
 	"fmt"
 	"note_cli/api"
-	"os"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
@@ -91,12 +89,7 @@ var searchCmd = &cobra.Command{
 		}
 
 		fmt.Printf("총 %d개의 노트를 찾았습니다.\n", len(results))
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tTITLE\tCATEGORY\tUPDATED")
-		for _, note := range results {
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", note.ID, truncateText(note.Title, 40), note.Category, formatTimestamp(note.UpdatedAt, 16))
-		}
-		w.Flush()
+		printBoardTable(results)
 		return nil
 	},
 }

@@ -36,6 +36,9 @@ func Execute() {
 }
 
 func init() {
+	// 도움말에 실제 실행 파일 이름이 표시되도록 조정 (예: ncli.exe → ncli)
+	rootCmd.Use = binaryName()
+
 	// 최상위 명령어 전역 플래그 정의
 	rootCmd.PersistentFlags().Bool("debug", false, "디버그 출력 활성화")
 }
