@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"mime"
@@ -68,25 +67,27 @@ func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var fr FileRead
-	if err := json.Unmarshal(body, &fr); err != nil {
+	fr, err := decodeJSON[FileRead](body, nil)
+	if err != nil {
 		return nil, err
 	}
 	return &fr, nil
 }
 
-// GetFiles 현재 사용자가 업로드한 모든 파일 조회
-func (c *Client) GetFiles() ([]FileRead, error) {
-	body, err := c.get("/files")
-	if err != nil {
-		return nil, err
+// sanitizeFilename 경로 구분자와 상대 경로 요소를 제거해 순수 파일명만 남긴다.
+// 안전한 파일명이 남지 않으면 빈 문자열을 반환한다.
+func sanitizeFilename(filename string) string {
+	base := filepath.Base(filename)
+	if base == "." || base == ".." || base == string(filepath.Separator) || base == "/" {
+		return ""
 	}
 
-	var files []FileRead
-	if err := json.Unmarshal(body, &files); err != nil {
-		return nil, err
-	}
-	return files, nil
+	return base
+}
+
+// GetFiles 현재 사용자가 업로드한 모든 파일 조회
+func (c *Client) GetFiles() ([]FileRead, error) {
+	return decodeJSON[[]FileRead](c.get("/files"))
 }
 
 // DownloadFile ID로 파일을 다운로드하여 지정된 디렉토리에 저장
@@ -108,10 +109,13 @@ func (c *Client) DownloadFile(fileID int, destDir string, filename string) (stri
 				filename = params["filename"]
 			}
 		}
+	}
 
-		if filename == "" {
-			filename = fmt.Sprintf("downloaded_file_%d", fileID)
-		}
+	// 서버가 제공한 파일명에 경로 구분자가 섞여 있어도 대상 디렉토리를
+	// 벗어나지 못하도록 파일명 부분만 사용
+	filename = sanitizeFilename(filename)
+	if filename == "" {
+		filename = fmt.Sprintf("downloaded_file_%d", fileID)
 	}
 	destPath := filepath.Join(destDir, filename)
 

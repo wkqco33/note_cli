@@ -5,7 +5,6 @@ import (
 	"note_cli/api"
 	"note_cli/tui"
 
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
@@ -25,26 +24,7 @@ var addCmd = &cobra.Command{
 		}
 
 		var title, category string
-
-		form := huh.NewForm(
-			huh.NewGroup(
-				huh.NewInput().
-					Title("제목").
-					Value(&title).
-					Validate(func(str string) error {
-						if str == "" {
-							return fmt.Errorf("제목을 입력해야 합니다")
-						}
-						return nil
-					}),
-				huh.NewSelect[string]().
-					Title("카테고리").
-					Options(categorySelectOptions()...).
-					Value(&category),
-			),
-		)
-
-		if err := form.Run(); err != nil {
+		if err := runNoteForm(&title, &category); err != nil {
 			fmt.Println("작성이 취소되었습니다.")
 			return nil
 		}
@@ -60,15 +40,9 @@ var addCmd = &cobra.Command{
 			return nil
 		}
 
-		var imageUrls []string
-		for _, f := range attachedFiles {
-			fmt.Printf("파일 첨부 중: %s\n", f)
-			uploaded, err := client.UploadFile(f)
-			if err != nil {
-				return fmt.Errorf("업로드 실패 (%s): %w", f, err)
-			}
-			imageUrls = append(imageUrls, uploaded.URL)
-			fmt.Println("업로드 완료!")
+		imageUrls, err := uploadAttachedFiles(client, attachedFiles)
+		if err != nil {
+			return err
 		}
 
 		board := api.BoardCreate{

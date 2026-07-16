@@ -9,6 +9,7 @@ import (
 
 	"note_cli/api"
 
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
@@ -66,8 +67,20 @@ var importCmd = &cobra.Command{
 		}
 		filesReader.Close()
 
-		// --clean 옵션이 켜져있다면 기존 데이터 일괄 삭제
+		// --clean 옵션이 켜져있다면 기존 데이터 일괄 삭제 (파괴적 작업이므로 확인 필수)
 		if cleanImport {
+			confirm := false
+			err := huh.NewConfirm().
+				Title("--clean: 서버의 모든 기존 노트와 파일을 삭제한 뒤 복원합니다. 계속하시겠습니까?").
+				Affirmative("예 (전체 삭제 후 복원)").
+				Negative("아니오 (취소)").
+				Value(&confirm).
+				Run()
+			if err != nil || !confirm {
+				fmt.Println("복원이 취소되었습니다.")
+				return nil
+			}
+
 			fmt.Println("기존 데이터 삭제 요청(--clean) 처리 중...")
 
 			// 기존 노트 삭제

@@ -2,11 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"note_cli/config"
 	"note_cli/utils"
+	"strings"
 	"sync"
 	"time"
 )
@@ -20,24 +22,35 @@ var httpTransport = &http.Transport{
 	IdleConnTimeout:       90 * time.Second,
 }
 
+// requestTimeout 일반(비스트림) 요청의 전체 제한 시간.
+// 응답 본문 수신이 멈춰도 CLI가 무한 대기하지 않도록 한다.
+const requestTimeout = 60 * time.Second
+
 // Client Note App API 통신용 HTTP 클라이언트 래퍼
 type Client struct {
-	BaseURL    string
+	BaseURL string
+	// HTTPClient 일반 JSON 요청용 (전체 타임아웃 적용)
 	HTTPClient *http.Client
-	Config     *config.Config
+	// StreamClient 대용량 업로드/다운로드용 (본문 전송 시간 무제한)
+	StreamClient *http.Client
+	Config       *config.Config
 
 	secretsOnce sync.Once
 	secrets     config.RuntimeSecrets
 	secretsErr  error
+
+	// autoLoggingIn 자동 로그인 진행 중 여부 (재귀 자동 로그인 방지)
+	autoLoggingIn bool
 }
 
 // NewClient 로드된 설정으로 새 API 클라이언트 생성
 func NewClient(cfg *config.Config) *Client {
 	baseURL := fmt.Sprintf("http://%s:%d/api/v1", cfg.Host, cfg.Port)
 	return &Client{
-		BaseURL:    baseURL,
-		HTTPClient: &http.Client{Transport: httpTransport},
-		Config:     cfg,
+		BaseURL:      baseURL,
+		HTTPClient:   &http.Client{Transport: httpTransport, Timeout: requestTimeout},
+		StreamClient: &http.Client{Transport: httpTransport},
+		Config:       cfg,
 	}
 }
 
@@ -127,7 +140,11 @@ func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*
 	}
 	c.logRequest(req, stream)
 
-	resp, err := c.HTTPClient.Do(req)
+	httpClient := c.HTTPClient
+	if stream {
+		httpClient = c.StreamClient
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -144,8 +161,14 @@ func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*
 	}
 
 	utils.Debugf("API Error Body: %s", string(body))
-	if c.shouldRetryUnauthorized(resp.StatusCode, retryOn401) {
-		if err := c.retryWithRefresh(req); err == nil {
+	if resp.StatusCode == http.StatusUnauthorized && retryOn401 {
+		if c.Config.RefreshToken != "" {
+			if err := c.retryWithRefresh(req); err == nil {
+				return c.sendRequest(req, false, stream)
+			}
+		}
+		// 토큰 갱신이 실패했거나 불가능하면 저장된 계정으로 자동 로그인 시도
+		if err := c.tryAutoLogin(req); err == nil {
 			return c.sendRequest(req, false, stream)
 		}
 	}
@@ -172,8 +195,28 @@ func (c *Client) applyAuthHeaders(req *http.Request) error {
 	return nil
 }
 
-func (c *Client) shouldRetryUnauthorized(statusCode int, retryOn401 bool) bool {
-	return statusCode == http.StatusUnauthorized && retryOn401 && c.Config.RefreshToken != ""
+// errAutoLoginUnavailable 자동 로그인이 꺼져 있거나 계정 정보가 없어 시도할 수 없음
+var errAutoLoginUnavailable = errors.New("자동 로그인을 사용할 수 없습니다")
+
+// tryAutoLogin 자동 로그인이 켜져 있으면 저장된 계정으로 재로그인 후 요청 본문 복원
+func (c *Client) tryAutoLogin(req *http.Request) error {
+	if !c.Config.AutoLogin || c.Config.Username == "" || c.Config.Password == "" {
+		return errAutoLoginUnavailable
+	}
+	// 자동 로그인 요청 자체가 401을 받아 다시 자동 로그인을 시도하는 재귀 방지
+	if c.autoLoggingIn {
+		return errAutoLoginUnavailable
+	}
+	c.autoLoggingIn = true
+	defer func() { c.autoLoggingIn = false }()
+
+	utils.Debugln("인증이 만료되어 저장된 계정으로 자동 로그인을 시도합니다.")
+	if err := c.Login(c.Config.Username, c.Config.Password); err != nil {
+		utils.Debugf("자동 로그인 실패: %v", err)
+		return err
+	}
+
+	return resetRequestBody(req)
 }
 
 func (c *Client) retryWithRefresh(req *http.Request) error {
@@ -207,7 +250,42 @@ func parseAPIError(statusCode int, body []byte) error {
 		return &apiErr
 	}
 
+	var envelope apiErrorEnvelope
+	if err := json.Unmarshal(body, &envelope); err == nil && envelope.Error.Message != "" {
+		if msg := friendlyAuthMessage(statusCode, envelope.Error.Message); msg != "" {
+			return &APIError{Detail: msg}
+		}
+		return &APIError{Detail: envelope.Error.Message}
+	}
+
+	if msg := friendlyAuthMessage(statusCode, string(body)); msg != "" {
+		return &APIError{Detail: msg}
+	}
+
 	return fmt.Errorf("API error: status %d - %s", statusCode, string(body))
+}
+
+// friendlyAuthMessage 인증 관련 HTTP 상태 코드를 사용자 안내 문구로 변환.
+// 인증 오류가 아니면 빈 문자열을 반환해 서버 메시지를 그대로 노출한다.
+func friendlyAuthMessage(statusCode int, serverMessage string) string {
+	switch statusCode {
+	case http.StatusUnauthorized:
+		if isAPIKeyError(serverMessage) {
+			return "API 인증 키가 유효하지 않거나 만료되었습니다. NOTE_CLI_API_KEY / NOTE_CLI_SECRET_KEY 설정을 확인하거나 최신 버전으로 업데이트하세요"
+		}
+		return "로그인이 만료되었거나 인증에 실패했습니다. 'login' 명령으로 다시 로그인하세요"
+	case http.StatusForbidden:
+		return "이 작업을 수행할 권한이 없습니다"
+	}
+
+	return ""
+}
+
+// isAPIKeyError Secret-Key/Api-Key 헤더 문제(키 누락·만료)인지 서버 메시지로 판별
+func isAPIKeyError(message string) bool {
+	lower := strings.ToLower(message)
+	return strings.Contains(lower, "secret-key") || strings.Contains(lower, "secret key") ||
+		strings.Contains(lower, "api-key") || strings.Contains(lower, "api key")
 }
 
 func (c *Client) logRequest(req *http.Request, stream bool) {

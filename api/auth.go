@@ -15,13 +15,8 @@ func (c *Client) Login(username, password string) error {
 	data.Set("username", username)
 	data.Set("password", password)
 
-	body, err := c.post("/auth/login", "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+	tr, err := decodeJSON[TokenResponse](c.post("/auth/login", "application/x-www-form-urlencoded", strings.NewReader(data.Encode())))
 	if err != nil {
-		return err
-	}
-
-	var tr TokenResponse
-	if err := json.Unmarshal(body, &tr); err != nil {
 		return err
 	}
 
@@ -43,13 +38,8 @@ func (c *Client) Refresh() error {
 		return err
 	}
 
-	body, err := c.doRequest(req, false)
+	tr, err := decodeJSON[TokenResponse](c.doRequest(req, false))
 	if err != nil {
-		return err
-	}
-
-	var tr TokenResponse
-	if err := json.Unmarshal(body, &tr); err != nil {
 		return err
 	}
 

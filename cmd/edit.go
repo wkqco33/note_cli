@@ -5,7 +5,6 @@ import (
 	"note_cli/api"
 	"note_cli/tui"
 
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
@@ -25,27 +24,9 @@ var editCmd = &cobra.Command{
 			return err
 		}
 
-		var id int
-		if len(args) == 1 {
-			id, err = parseIDArg(args)
-			if err != nil {
-				return err
-			}
-		} else {
-			notes, err := client.GetBoards()
-			if err != nil {
-				return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)
-			}
-			if len(notes) == 0 {
-				fmt.Println("수정할 노트가 없습니다.")
-				return nil
-			}
-
-			id, err = selectBoardID("수정할 노트를 선택하세요", notes)
-			if err != nil {
-				fmt.Println("취소되었습니다.")
-				return nil
-			}
+		id, ok, err := resolveBoardID(client, args, "수정할 노트를 선택하세요", "수정할 노트가 없습니다.")
+		if err != nil || !ok {
+			return err
 		}
 		note, err := client.GetBoard(id)
 		if err != nil {
@@ -54,26 +35,7 @@ var editCmd = &cobra.Command{
 
 		title := note.Title
 		category := note.Category
-
-		form := huh.NewForm(
-			huh.NewGroup(
-				huh.NewInput().
-					Title("제목").
-					Value(&title).
-					Validate(func(str string) error {
-						if str == "" {
-							return fmt.Errorf("제목을 입력해야 합니다")
-						}
-						return nil
-					}),
-				huh.NewSelect[string]().
-					Title("카테고리").
-					Options(categorySelectOptions()...).
-					Value(&category),
-			),
-		)
-
-		if err := form.Run(); err != nil {
+		if err := runNoteForm(&title, &category); err != nil {
 			fmt.Println("수정이 취소되었습니다.")
 			return nil
 		}
@@ -89,17 +51,11 @@ var editCmd = &cobra.Command{
 			imageUrls = append(imageUrls, note.Images...)
 		}
 
-		if len(editAttachedFiles) > 0 {
-			for _, f := range editAttachedFiles {
-				fmt.Printf("파일 첨부 중: %s\n", f)
-				uploaded, err := client.UploadFile(f)
-				if err != nil {
-					return fmt.Errorf("업로드 실패 (%s): %w", f, err)
-				}
-				imageUrls = append(imageUrls, uploaded.URL)
-				fmt.Println("업로드 완료!")
-			}
+		newUrls, err := uploadAttachedFiles(client, editAttachedFiles)
+		if err != nil {
+			return err
 		}
+		imageUrls = append(imageUrls, newUrls...)
 
 		update := api.BoardUpdate{
 			Title:    &title,

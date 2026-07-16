@@ -51,6 +51,14 @@ func (e *APIError) Error() string {
 	return e.Detail
 }
 
+// apiErrorEnvelope {"error":{"code":...,"message":...}} 형태의 서버 오류 응답
+type apiErrorEnvelope struct {
+	Error struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
 // FileRead API 응답을 통해 반환된 파일 정보
 type FileRead struct {
 	ID               int    `json:"id"`

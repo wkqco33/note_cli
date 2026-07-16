@@ -41,27 +41,9 @@ var viewCmd = &cobra.Command{
 			return err
 		}
 
-		var id int
-		if len(args) == 1 {
-			id, err = parseIDArg(args)
-			if err != nil {
-				return err
-			}
-		} else {
-			notes, err := client.GetBoards()
-			if err != nil {
-				return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)
-			}
-			if len(notes) == 0 {
-				fmt.Println("조회할 노트가 없습니다.")
-				return nil
-			}
-
-			id, err = selectBoardID("조회할 노트를 선택하세요", notes)
-			if err != nil {
-				fmt.Println("취소되었습니다.")
-				return nil
-			}
+		id, ok, err := resolveBoardID(client, args, "조회할 노트를 선택하세요", "조회할 노트가 없습니다.")
+		if err != nil || !ok {
+			return err
 		}
 		note, err := client.GetBoard(id)
 		if err != nil {
@@ -87,7 +69,7 @@ var viewCmd = &cobra.Command{
 		fmt.Println(div)
 
 		renderer, err := glamour.NewTermRenderer(
-			glamour.WithStandardStyle("dark"),
+			glamour.WithAutoStyle(),
 			glamour.WithWordWrap(0),
 		)
 		if err != nil {
