@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -412,5 +413,176 @@ func TestDoRequestResetsBodyOnRetry(t *testing.T) {
 	}
 	if payloads[0] != `{"title":"memo"}` || payloads[1] != `{"title":"memo"}` {
 		t.Fatalf("request body was not preserved across retry: %#v", payloads)
+	}
+}
+
+// TestUploadFileRefreshesTokenBeforeUpload는 만료된 토큰으로 UploadFile을
+// 호출해도 업로드 전에 토큰이 자동 갱신되어 한 번에 성공하는지 검증합니다.
+// 기존 버그: io.Pipe 본문은 401 재시도 시 본문을 복원할 수 없어 첫 번째 업로드가
+// 실패하고 두 번째 실행에서야 성공하는 문제가 있었습니다.
+func TestUploadFileRefreshesTokenBeforeUpload(t *testing.T) {
+	setTestHome(t)
+	setTestSecrets(t)
+
+	var uploadCalls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/auth/refresh":
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
+		case "/boards/me":
+			if r.Header.Get("Authorization") == "Bearer expired-token" {
+				http.Error(w, `{"detail":"expired"}`, http.StatusUnauthorized)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			io.WriteString(w, `[]`)
+		case "/files/upload":
+			uploadCalls++
+			if r.Header.Get("Authorization") != "Bearer new-token" {
+				http.Error(w, `{"detail":"expired"}`, http.StatusUnauthorized)
+				return
+			}
+			if _, err := io.Copy(io.Discard, r.Body); err != nil {
+				t.Fatalf("failed to read upload body: %v", err)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `{"id":1,"filename":"test.txt","original_filename":"test.txt","file_size":5,"content_type":"text/plain","url":"http://example.com/test.txt","user_id":1,"created_at":"2024-01-01T00:00:00"}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	tmpFile := filepath.Join(t.TempDir(), "test.txt")
+	if err := os.WriteFile(tmpFile, []byte("hello"), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	fr, err := client.UploadFile(tmpFile)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if uploadCalls != 1 {
+		t.Fatalf("expected exactly 1 upload call (token pre-validated), got %d", uploadCalls)
+	}
+	if fr.URL != "http://example.com/test.txt" {
+		t.Fatalf("unexpected URL: %s", fr.URL)
+	}
+	if client.Config.AccessToken != "new-token" {
+		t.Fatalf("expected refreshed access token, got %q", client.Config.AccessToken)
+	}
+}
+
+// TestUploadFileFailsWhenTokenCannotBeRefreshed는 토큰 갱신이 불가능할 때
+// 업로드가 시도되지 않고 즉시 에러를 반환하는지 검증합니다.
+func TestUploadFileFailsWhenTokenCannotBeRefreshed(t *testing.T) {
+	setTestHome(t)
+	setTestSecrets(t)
+
+	var uploadCalls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/auth/refresh":
+			http.Error(w, `{"detail":"refresh expired"}`, http.StatusUnauthorized)
+		case "/boards/me":
+			http.Error(w, `{"detail":"expired"}`, http.StatusUnauthorized)
+		case "/files/upload":
+			uploadCalls++
+			io.WriteString(w, `{}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	tmpFile := filepath.Join(t.TempDir(), "test.txt")
+	if err := os.WriteFile(tmpFile, []byte("hello"), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	_, err := client.UploadFile(tmpFile)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if uploadCalls != 0 {
+		t.Fatalf("expected 0 upload calls (token validation should fail first), got %d", uploadCalls)
+	}
+}
+
+// TestUploadFileNoRetryOn401DuringStream는 스트리밍 업로드 중 401이 발생하면
+// 재시도하지 않고 즉시 에러를 반환하는지 검증합니다. (토큰이 검증된 후
+// 업로드 도중 만료되는 극단적 케이스)
+func TestUploadFileNoRetryOn401DuringStream(t *testing.T) {
+	setTestHome(t)
+	setTestSecrets(t)
+
+	var uploadCalls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/boards/me":
+			w.WriteHeader(http.StatusOK)
+			io.WriteString(w, `[]`)
+		case "/files/upload":
+			uploadCalls++
+			// 토큰 검증 통과 후 업로드 시점에 401 반환 (재시도 없이 실패해야 함)
+			http.Error(w, `{"detail":"token expired during upload"}`, http.StatusUnauthorized)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	tmpFile := filepath.Join(t.TempDir(), "test.txt")
+	if err := os.WriteFile(tmpFile, []byte("hello"), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	_, err := client.UploadFile(tmpFile)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if uploadCalls != 1 {
+		t.Fatalf("expected exactly 1 upload call (no retry on 401), got %d", uploadCalls)
+	}
+}
+
+// TestPostStreamDoesNotRetryOn401는 postStream이 401 응답 시 재시도하지
+// 않고 에러를 반환하는지 직접 검증합니다.
+func TestPostStreamDoesNotRetryOn401(t *testing.T) {
+	setTestHome(t)
+	setTestSecrets(t)
+
+	var postCalls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/auth/refresh":
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
+		case "/stream-upload":
+			postCalls++
+			http.Error(w, `{"detail":"expired"}`, http.StatusUnauthorized)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	rc := io.NopCloser(strings.NewReader("payload"))
+	resp, err := client.postStream("/stream-upload", "application/octet-stream", rc)
+	if err == nil {
+		resp.Body.Close()
+		t.Fatal("expected error, got nil")
+	}
+	if postCalls != 1 {
+		t.Fatalf("expected exactly 1 POST call (no retry), got %d", postCalls)
 	}
 }

@@ -125,13 +125,29 @@ func (c *Client) getStream(endpoint string) (*http.Response, error) {
 }
 
 // postStream 스트리밍 본문을 사용하는 POST 요청 헬퍼
+//
+// io.Pipe 등 복원 불가능한 스트리밍 본문은 401 재시도 시 req.GetBody가
+// nil이어서 본문을 재구성할 수 없습니다. 따라서 스트리밍 POST 요청은
+// 401 자동 재시도를 비활성화하고, 호출자가 ensureValidToken로 사전에
+// 토큰을 검증해야 합니다.
 func (c *Client) postStream(endpoint string, contentType string, bodyReader io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest("POST", c.BaseURL+endpoint, bodyReader)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", contentType)
-	return c.doRequestStream(req, true)
+	return c.doRequestStream(req, false)
+}
+
+// ensureValidToken는 가벼운 인증 GET 요청으로 액세스 토큰을 사전 검증합니다.
+// 토큰이 만료된 경우 비스트림 요청의 401 재시도 경로(refresh / auto-login)를
+// 통해 자동 갱신됩니다. 스트리밍 업로드 전에 호출하여 401 재시도가 불가능한
+// 파이프 본문 요청이 실패하는 문제를 예방합니다.
+func (c *Client) ensureValidToken() error {
+	if _, err := c.get("/boards/me"); err != nil {
+		return fmt.Errorf("인증 토큰 확인에 실패했습니다: %w", err)
+	}
+	return nil
 }
 
 func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*http.Response, error) {

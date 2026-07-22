@@ -7,12 +7,22 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/schollz/progressbar/v3"
 )
 
 // UploadFile multipart/form-data를 사용하여 서버에 단일 파일 업로드
+//
+// io.Pipe 기반 스트리밍 본문은 401 재시도 시 본문을 복원할 수 없으므로
+// 업로드 전에 ensureValidToken로 토큰을 사전 검증합니다.
+// 업로드 실패 시에도 파이프 리더를 즉시 닫아 고루틴이 블록되지 않도록
+// 보장합니다.
 func (c *Client) UploadFile(filePath string) (*FileRead, error) {
+	if err := c.ensureValidToken(); err != nil {
+		return nil, err
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("could not open file: %w", err)
@@ -25,6 +35,10 @@ func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 	}
 
 	pr, pw := io.Pipe()
+	// 업로드 실패 또는 함수 종료 시 파이프 리더를 닫아, 고루틴이
+	// pw.Write()에서 무한 블록되는 것을 방지합니다.
+	defer pr.Close()
+
 	writer := multipart.NewWriter(pw)
 	contentType := writer.FormDataContentType()
 
@@ -75,10 +89,15 @@ func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 }
 
 // sanitizeFilename 경로 구분자와 상대 경로 요소를 제거해 순수 파일명만 남긴다.
+// Windows 스타일 역슬래시(\)와 Unix 스타일 슬래시(/)를 모두 처리하여
+// 어떤 플랫폼에서도 path traversal 공격을 방지한다.
 // 안전한 파일명이 남지 않으면 빈 문자열을 반환한다.
 func sanitizeFilename(filename string) string {
-	base := filepath.Base(filename)
-	if base == "." || base == ".." || base == string(filepath.Separator) || base == "/" {
+	// Windows 스타일 역슬래시를 슬래시로 정규화하여 모든 플랫폼에서
+	// 동일하게 경로 구분자를 처리한다.
+	normalized := strings.ReplaceAll(filename, "\\", "/")
+	base := filepath.Base(normalized)
+	if base == "." || base == ".." || base == "/" || base == "" {
 		return ""
 	}
 
