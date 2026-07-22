@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 
 	"note_cli/api"
 	"note_cli/config"
@@ -150,13 +149,41 @@ func resolveFileID(client *api.Client, prompt, emptyMsg string) (id int, files [
 }
 
 // printBoardTable 노트 목록을 표 형태로 출력 (list/search 공용)
+// tabwriter는 문자의 표시 폭이 아닌 룬 수 기준으로 패딩하므로 한글 등
+// 전각 문자가 포함되면 정렬이 깨진다. 대신 runewidth로 표시 폭을 계산해
+// 수동으로 패딩한다.
 func printBoardTable(notes []api.BoardRead) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "ID\tTITLE\tCATEGORY\tUPDATED")
+	const (
+		colID    = 5
+		colTitle = 42
+		colCat   = 10
+		colDate  = 16
+		sep      = "  "
+	)
+
+	header := padRight("ID", colID) + sep +
+		padRight("TITLE", colTitle) + sep +
+		padRight("CATEGORY", colCat) + sep +
+		"UPDATED"
+	fmt.Fprintln(os.Stdout, header)
+
 	for _, note := range notes {
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", note.ID, truncateText(note.Title, 40), note.Category, formatTimestamp(note.UpdatedAt, 16))
+		row := padRight(fmt.Sprintf("%d", note.ID), colID) + sep +
+			padRight(truncateText(note.Title, 40), colTitle) + sep +
+			padRight(note.Category, colCat) + sep +
+			formatTimestamp(note.UpdatedAt, colDate)
+		fmt.Fprintln(os.Stdout, row)
 	}
-	w.Flush()
+}
+
+// padRight 문자열을 표시 폭 기준으로 width칸이 되도록 우측에 공백을 채운다.
+// 전각(한글 등) 문자는 2칸으로 계산하여 tabwriter의 정렬 깨짐을 방지한다.
+func padRight(s string, width int) string {
+	pad := width - runewidth.StringWidth(s)
+	if pad <= 0 {
+		return s
+	}
+	return s + strings.Repeat(" ", pad)
 }
 
 func parseIDArg(args []string) (int, error) {
