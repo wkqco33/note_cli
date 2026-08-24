@@ -24,7 +24,9 @@ func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 	if err != nil {
 		return nil, fmt.Errorf("파일을 열지 못했습니다: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	stat, err := file.Stat()
 	if err != nil {
@@ -34,7 +36,9 @@ func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 	pr, pw := io.Pipe()
 	// 업로드 실패 또는 함수 종료 시 파이프 리더를 닫아, 고루틴이
 	// pw.Write()에서 무한 블록되는 것을 방지합니다.
-	defer pr.Close()
+	defer func() {
+		_ = pr.Close()
+	}()
 
 	writer := multipart.NewWriter(pw)
 	contentType := writer.FormDataContentType()
@@ -42,7 +46,9 @@ func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 	errChan := make(chan error, 1)
 
 	go func() {
-		defer pw.Close()
+		defer func() {
+			_ = pw.Close()
+		}()
 		part, err := writer.CreateFormFile("file", filepath.Base(filePath))
 		if err != nil {
 			errChan <- err
@@ -67,7 +73,9 @@ func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if writeErr := <-errChan; writeErr != nil {
 		return nil, fmt.Errorf("multipart 요청 생성 오류: %w", writeErr)
@@ -136,7 +144,9 @@ func (c *Client) DownloadFile(fileID int, destDir string, filename string) (stri
 	if err != nil {
 		return "", fmt.Errorf("파일을 생성하지 못했습니다: %w", err)
 	}
-	defer outFile.Close()
+	defer func() {
+		_ = outFile.Close()
+	}()
 
 	var bar *progressbar.ProgressBar
 	if resp.ContentLength > 0 {
@@ -163,16 +173,20 @@ func (c *Client) DownloadFileTemp(fileID int, ext string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	tmpFile, err := os.CreateTemp("", fmt.Sprintf("note_img_*%s", ext))
 	if err != nil {
 		return "", fmt.Errorf("임시 파일 생성 실패: %w", err)
 	}
-	defer tmpFile.Close()
+	defer func() {
+		_ = tmpFile.Close()
+	}()
 
 	if _, err := io.Copy(tmpFile, resp.Body); err != nil {
-		os.Remove(tmpFile.Name())
+		_ = os.Remove(tmpFile.Name())
 		return "", fmt.Errorf("파일 다운로드 실패: %w", err)
 	}
 

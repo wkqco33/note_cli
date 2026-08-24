@@ -57,12 +57,12 @@ func TestCleanCacheStats(t *testing.T) {
 	_ = os.WriteFile(paths[0], make([]byte, 2048), 0644)
 	_ = os.WriteFile(paths[1], make([]byte, 1024), 0644)
 
-	count, size := cleanCacheFiles(paths, t.TempDir()) // missing dir → 삭제 실패는 무시
+	count, _ := cleanCacheFiles(paths, t.TempDir()) // missing dir → 삭제 실패는 무시
 	if count != 0 {
 		t.Fatalf("expected 0 deleted (temp dir differs), got %d", count)
 	}
 
-	count, size = cleanCacheFiles(paths, tmp)
+	count, size := cleanCacheFiles(paths, tmp)
 	if count != 2 {
 		t.Fatalf("expected 2 deleted, got %d", count)
 	}

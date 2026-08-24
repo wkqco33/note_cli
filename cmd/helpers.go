@@ -188,7 +188,7 @@ func buildBoardTable(notes []api.BoardRead) string {
 
 // printBoardTable 노트 목록을 표 형태로 출력 (list/search 공용)
 func printBoardTable(notes []api.BoardRead) {
-	fmt.Fprint(os.Stdout, buildBoardTable(notes))
+	_, _ = fmt.Fprint(os.Stdout, buildBoardTable(notes))
 }
 
 // padRight 문자열을 표시 폭 기준으로 width칸이 되도록 우측에 공백을 채운다.

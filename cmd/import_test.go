@@ -74,7 +74,9 @@ func TestFindBackupEntries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open zip: %v", err)
 	}
-	defer r.Close()
+	defer func() {
+		_ = r.Close()
+	}()
 
 	notesFile, filesFile := findBackupEntries(r.File)
 	if notesFile == nil || filesFile == nil {
@@ -95,7 +97,9 @@ func TestFindBackupEntriesMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open zip: %v", err)
 	}
-	defer r.Close()
+	defer func() {
+		_ = r.Close()
+	}()
 
 	notesFile, filesFile := findBackupEntries(r.File)
 	if notesFile == nil {

@@ -39,14 +39,16 @@ func OpenEditor(initialContent string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("임시 파일을 생성하지 못했습니다: %w", err)
 	}
-	defer os.Remove(tempFile.Name())
+	defer func() {
+		_ = os.Remove(tempFile.Name())
+	}()
 
 	if initialContent != "" {
 		if _, err := tempFile.WriteString(initialContent); err != nil {
 			return "", fmt.Errorf("초기 내용을 쓰지 못했습니다: %w", err)
 		}
 	}
-	tempFile.Close()
+	_ = tempFile.Close()
 
 	cmd := exec.Command(editor, append(editorArgs, tempFile.Name())...)
 	cmd.Stdin = os.Stdin

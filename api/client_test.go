@@ -55,7 +55,7 @@ func TestDoRequestRetriesAfterRefresh(t *testing.T) {
 				t.Fatalf("unexpected refresh body: %q", string(body))
 			}
 			w.Header().Set("Content-Type", "application/json")
-			io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
+			_, _ = io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
 		case "/protected":
 			protectedCalls++
 			if protectedCalls == 1 {
@@ -66,7 +66,7 @@ func TestDoRequestRetriesAfterRefresh(t *testing.T) {
 				t.Fatalf("unexpected authorization header: %q", got)
 			}
 			w.WriteHeader(http.StatusOK)
-			io.WriteString(w, `{"ok":true}`)
+			_, _ = io.WriteString(w, `{"ok":true}`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -100,7 +100,7 @@ func TestDoRequestStreamRetriesAfterRefresh(t *testing.T) {
 		switch r.URL.Path {
 		case "/auth/refresh":
 			w.Header().Set("Content-Type", "application/json")
-			io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
+			_, _ = io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
 		case "/stream":
 			protectedCalls++
 			if protectedCalls == 1 {
@@ -127,7 +127,9 @@ func TestDoRequestStreamRetriesAfterRefresh(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

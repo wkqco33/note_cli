@@ -48,7 +48,7 @@ var configCmd = &cobra.Command{
 		}
 		fmt.Fprintf(w, "로그인\t%s\n", loginStatus)
 		fmt.Fprintf(w, "설정 파일\t%s\n", path)
-		w.Flush()
+		_ = w.Flush()
 		return nil
 	},
 }

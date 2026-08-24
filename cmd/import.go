@@ -38,7 +38,9 @@ var importCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("백업 파일을 열 수 없습니다: %w", err)
 		}
-		defer r.Close()
+		defer func() {
+			_ = r.Close()
+		}()
 
 		// notes.json 및 files.json 찾기
 		notesFile, filesFile := findBackupEntries(r.File)
@@ -54,10 +56,10 @@ var importCmd = &cobra.Command{
 		}
 		var boards []api.BoardRead
 		if err := json.NewDecoder(notesReader).Decode(&boards); err != nil {
-			notesReader.Close()
+			_ = notesReader.Close()
 			return fmt.Errorf("notes.json 파싱 실패: %w", err)
 		}
-		notesReader.Close()
+		_ = notesReader.Close()
 
 		// files.json 파싱
 		filesReader, err := filesFile.Open()
@@ -66,10 +68,10 @@ var importCmd = &cobra.Command{
 		}
 		var backupFiles []api.FileRead
 		if err := json.NewDecoder(filesReader).Decode(&backupFiles); err != nil {
-			filesReader.Close()
+			_ = filesReader.Close()
 			return fmt.Errorf("files.json 파싱 실패: %w", err)
 		}
-		filesReader.Close()
+		_ = filesReader.Close()
 
 		// --clean 옵션이 켜져있다면 기존 데이터 일괄 삭제 (파괴적 작업이므로 확인 필수)
 		if cleanImport {
@@ -146,16 +148,16 @@ var importCmd = &cobra.Command{
 				// zip 엔트리 데이터를 임시 파일로 복사
 				entryReader, err := zipEntry.Open()
 				if err != nil {
-					tmpFile.Close()
-					os.Remove(tmpPath)
+					_ = tmpFile.Close()
+					_ = os.Remove(tmpPath)
 					return fmt.Errorf("백업 파일 읽기 실패 (%s): %w", entryPath, err)
 				}
 
 				_, err = io.Copy(tmpFile, entryReader)
-				entryReader.Close()
-				tmpFile.Close()
+				_ = entryReader.Close()
+				_ = tmpFile.Close()
 				if err != nil {
-					os.Remove(tmpPath)
+					_ = os.Remove(tmpPath)
 					return fmt.Errorf("임시 파일 쓰기 실패: %w", err)
 				}
 

@@ -80,7 +80,6 @@ var searchCmd = &cobra.Command{
 		}
 
 		var results []api.BoardRead
-
 		results = filterBoards(notes, files, searchTitle, searchContent, searchFile)
 
 		if len(results) == 0 {

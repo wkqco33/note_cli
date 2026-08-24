@@ -55,10 +55,14 @@ var exportCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("백업 파일을 생성하지 못했습니다: %w", err)
 		}
-		defer zipFile.Close()
+		defer func() {
+			_ = zipFile.Close()
+		}()
 
 		archive := zip.NewWriter(zipFile)
-		defer archive.Close()
+		defer func() {
+			_ = archive.Close()
+		}()
 
 		// notes.json 작성
 		notesData, err := marshalBackupJSON(boards)
@@ -106,13 +110,13 @@ var exportCmd = &cobra.Command{
 				entryPath := fmt.Sprintf("files/%d_%s", f.ID, f.OriginalFilename)
 				fileEntry, err := archive.Create(entryPath)
 				if err != nil {
-					body.Close()
+					_ = body.Close()
 					fmt.Printf("\nZIP 내 파일 생성 실패 (%s): %v. 계속 진행합니다.\n", entryPath, err)
 					continue
 				}
 
 				_, err = io.Copy(io.MultiWriter(fileEntry, bar), body)
-				body.Close()
+				_ = body.Close()
 				if err != nil {
 					fmt.Printf("\nZIP 복사 중 오류 발생 (%s): %v. 계속 진행합니다.\n", entryPath, err)
 					continue

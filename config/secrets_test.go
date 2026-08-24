@@ -31,10 +31,10 @@ func TestLoadRuntimeSecretsFallsBackToEmbeddedValues(t *testing.T) {
 		buildinfo.SecretKey = oldSecretKey
 	})
 
-	os.Unsetenv("NOTE_CLI_API_KEY")
-	os.Unsetenv("NOTE_CLI_SECRET_KEY")
-	os.Unsetenv("API_KEY")
-	os.Unsetenv("SECRET_KEY")
+	_ = os.Unsetenv("NOTE_CLI_API_KEY")
+	_ = os.Unsetenv("NOTE_CLI_SECRET_KEY")
+	_ = os.Unsetenv("API_KEY")
+	_ = os.Unsetenv("SECRET_KEY")
 	t.Setenv("NOTE_CLI_ENV_FILE", filepath.Join(t.TempDir(), "missing.env"))
 
 	secrets, err := LoadRuntimeSecrets()
@@ -75,10 +75,10 @@ func TestLoadRuntimeSecretsFromDotEnv(t *testing.T) {
 		t.Fatalf("failed to write .env: %v", err)
 	}
 
-	os.Unsetenv("NOTE_CLI_API_KEY")
-	os.Unsetenv("NOTE_CLI_SECRET_KEY")
-	os.Unsetenv("API_KEY")
-	os.Unsetenv("SECRET_KEY")
+	_ = os.Unsetenv("NOTE_CLI_API_KEY")
+	_ = os.Unsetenv("NOTE_CLI_SECRET_KEY")
+	_ = os.Unsetenv("API_KEY")
+	_ = os.Unsetenv("SECRET_KEY")
 	t.Setenv("NOTE_CLI_ENV_FILE", envPath)
 
 	secrets, err := LoadRuntimeSecrets()
@@ -91,8 +91,8 @@ func TestLoadRuntimeSecretsFromDotEnv(t *testing.T) {
 }
 
 func TestLoadRuntimeSecretsAcceptsLegacyNames(t *testing.T) {
-	os.Unsetenv("NOTE_CLI_API_KEY")
-	os.Unsetenv("NOTE_CLI_SECRET_KEY")
+	_ = os.Unsetenv("NOTE_CLI_API_KEY")
+	_ = os.Unsetenv("NOTE_CLI_SECRET_KEY")
 	t.Setenv("API_KEY", "legacy-api")
 	t.Setenv("SECRET_KEY", "legacy-secret")
 
@@ -106,10 +106,10 @@ func TestLoadRuntimeSecretsAcceptsLegacyNames(t *testing.T) {
 }
 
 func TestLoadRuntimeSecretsFailsWhenMissing(t *testing.T) {
-	os.Unsetenv("NOTE_CLI_API_KEY")
-	os.Unsetenv("NOTE_CLI_SECRET_KEY")
-	os.Unsetenv("API_KEY")
-	os.Unsetenv("SECRET_KEY")
+	_ = os.Unsetenv("NOTE_CLI_API_KEY")
+	_ = os.Unsetenv("NOTE_CLI_SECRET_KEY")
+	_ = os.Unsetenv("API_KEY")
+	_ = os.Unsetenv("SECRET_KEY")
 	t.Setenv("NOTE_CLI_ENV_FILE", filepath.Join(t.TempDir(), "missing.env"))
 
 	if _, err := LoadRuntimeSecrets(); err == nil {

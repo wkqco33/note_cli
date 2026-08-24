@@ -60,7 +60,9 @@ func (c *Client) doRequest(req *http.Request, retryOn401 bool) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -172,7 +174,7 @@ func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*
 	}
 
 	body, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if err != nil {
 		return nil, fmt.Errorf("응답 본문을 읽지 못했습니다: %w", err)
 	}
