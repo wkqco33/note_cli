@@ -67,7 +67,7 @@ func (c *Client) doRequest(req *http.Request, retryOn401 bool) ([]byte, error) {
 		return nil, fmt.Errorf("응답 본문을 읽지 못했습니다: %w", err)
 	}
 
-	utils.Debugf("API Response Body: %s", string(body))
+	utils.Debugf("API Response Body: %d bytes", len(body))
 	return body, nil
 }
 
@@ -177,7 +177,7 @@ func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*
 		return nil, fmt.Errorf("응답 본문을 읽지 못했습니다: %w", err)
 	}
 
-	utils.Debugf("API Error Body: %s", string(body))
+	utils.Debugf("API Error Body: %d bytes", len(body))
 	if resp.StatusCode == http.StatusUnauthorized && retryOn401 {
 		if c.Config.RefreshToken != "" {
 			if err := c.retryWithRefresh(req); err == nil {

@@ -50,8 +50,9 @@ func TestDoRequestRetriesAfterRefresh(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/auth/refresh":
-			if got := r.URL.Query().Get("refresh_token"); got != "refresh-token" {
-				t.Fatalf("unexpected refresh token: %q", got)
+			body, _ := io.ReadAll(r.Body)
+			if !strings.Contains(string(body), `"refresh_token":"refresh-token"`) {
+				t.Fatalf("unexpected refresh body: %q", string(body))
 			}
 			w.Header().Set("Content-Type", "application/json")
 			io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)

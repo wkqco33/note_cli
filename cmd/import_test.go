@@ -129,3 +129,23 @@ func TestFindBackupFileEntry(t *testing.T) {
 		t.Fatal("expected nil for missing entry")
 	}
 }
+
+func TestExceedsRestoreFileSize(t *testing.T) {
+	tests := []struct {
+		name string
+		size uint64
+		want bool
+	}{
+		{"limit 이하", maxRestoreFileSize, false},
+		{"limit 초과", maxRestoreFileSize + 1, true},
+		{"빈 파일", 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &zip.File{FileHeader: zip.FileHeader{UncompressedSize64: tt.size}}
+			if got := exceedsRestoreFileSize(f); got != tt.want {
+				t.Fatalf("exceedsRestoreFileSize(%d) = %v, want %v", tt.size, got, tt.want)
+			}
+		})
+	}
+}

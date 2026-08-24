@@ -37,9 +37,19 @@
 액세스 토큰이 만료되었을 때 비밀번호 입력 없이 세션을 연장합니다.
 
 - **Endpoint**: `POST /auth/refresh`
-- **Query Parameter**:
+- **Body (JSON)**:
   - `refresh_token`: 저장해둔 리프레시 토큰 문자열
 - **Response**: 새 `access_token`과 `refresh_token` 반환.
+
+  ```json
+  {
+    "access_token": "eyJhbG...",
+    "refresh_token": "eyJhbG...",
+    "token_type": "bearer"
+  }
+  ```
+
+- **비고**: 토큰은 URL에 노출되면 로그/프록시에 유출될 수 있으므로 반드시 요청 본문으로 전송합니다.
 
 ---
 

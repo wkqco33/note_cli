@@ -15,6 +15,10 @@ import (
 
 var cleanImport bool
 
+// maxRestoreFileSize 복원 시 ZIP 내부 개별 파일의 최대 크기.
+// 서버 업로드 제한(MAX_UPLOAD_SIZE = 10MB)과 일치시켜 업로드 실패를 사전에 방지한다.
+const maxRestoreFileSize = 10 * 1024 * 1024
+
 var importCmd = &cobra.Command{
 	Use:   "import [PATH]",
 	Short: "백업 파일에서 노트 및 첨부파일 복원",
@@ -123,6 +127,12 @@ var importCmd = &cobra.Command{
 
 				if zipEntry == nil {
 					fmt.Printf("경고: 백업본 내부에서 파일을 찾을 수 없습니다: %s. 건너뜁니다.\n", entryPath)
+					continue
+				}
+
+				// 서버 업로드 제한을 초과하는 파일은 사전에 건너뛴다
+				if exceedsRestoreFileSize(zipEntry) {
+					fmt.Printf("경고: 파일 크기가 제한(%dMB)을 초과하여 건너뜁니다: %s\n", maxRestoreFileSize/(1024*1024), bf.OriginalFilename)
 					continue
 				}
 
@@ -236,6 +246,11 @@ func findBackupFileEntry(files []*zip.File, entryPath string) *zip.File {
 		}
 	}
 	return nil
+}
+
+// exceedsRestoreFileSize ZIP 엔트리의 압축 해제 크기가 복원 제한을 초과하는지 판단.
+func exceedsRestoreFileSize(f *zip.File) bool {
+	return f.UncompressedSize64 > maxRestoreFileSize
 }
 
 func init() {
