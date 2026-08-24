@@ -14,6 +14,7 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() { _ = client.Close() }()
 		notes, err := client.GetBoards()
 		if err != nil {
 			return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)

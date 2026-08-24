@@ -22,6 +22,7 @@ var exportCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() { _ = client.Close() }()
 
 		var exportPath string
 		if len(args) > 0 {

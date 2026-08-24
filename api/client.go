@@ -55,6 +55,11 @@ func NewClient(cfg *config.Config) *Client {
 	}
 }
 
+// Close 원격 클라이언트는 별도 자원 정리가 필요 없으므로 호환을 위해 제공한다.
+func (c *Client) Close() error {
+	return nil
+}
+
 func (c *Client) doRequest(req *http.Request, retryOn401 bool) ([]byte, error) {
 	resp, err := c.sendRequest(req, retryOn401, false)
 	if err != nil {

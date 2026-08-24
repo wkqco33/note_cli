@@ -40,6 +40,7 @@ var configCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+		_, _ = fmt.Fprintf(w, "mode\t%s\n", cfg.Mode)
 		_, _ = fmt.Fprintf(w, "host\t%s\n", cfg.Host)
 		_, _ = fmt.Fprintf(w, "port\t%d\n", cfg.Port)
 		_, _ = fmt.Fprintf(w, "auto_login\t%s\n", autoLogin)
@@ -55,7 +56,7 @@ var configCmd = &cobra.Command{
 
 var configSetCmd = &cobra.Command{
 	Use:   "set <key> <value>",
-	Short: "설정 값 수정 (host, port, auto_login)",
+	Short: "설정 값 수정 (mode, host, port, auto_login)",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := loadConfig()
@@ -87,6 +88,11 @@ var configSetCmd = &cobra.Command{
 
 func applyConfigValue(cfg *config.Config, key, value string) error {
 	switch key {
+	case "mode":
+		if value != "local" && value != "remote" {
+			return fmt.Errorf("mode 값은 local 또는 remote여야 합니다")
+		}
+		cfg.Mode = value
 	case "host":
 		if value == "" {
 			return fmt.Errorf("host 값은 비워둘 수 없습니다")
@@ -114,7 +120,7 @@ func applyConfigValue(cfg *config.Config, key, value string) error {
 	case "username", "password":
 		return fmt.Errorf("계정 정보는 직접 수정할 수 없습니다. auto_login을 켠 뒤 '%s login'을 사용하세요", binaryName())
 	default:
-		return fmt.Errorf("알 수 없는 설정 키입니다: %s (사용 가능: host, port, auto_login)", key)
+		return fmt.Errorf("알 수 없는 설정 키입니다: %s (사용 가능: mode, host, port, auto_login)", key)
 	}
 
 	return nil

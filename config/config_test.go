@@ -157,3 +157,35 @@ func TestLoadClearsUndecryptablePassword(t *testing.T) {
 		t.Fatalf("expected cleared password, got %q", cfg.Password)
 	}
 }
+
+func TestLoadDefaultsNewConfigToLocalMode(t *testing.T) {
+	setTestHome(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+	if cfg.Mode != "local" {
+		t.Fatalf("default mode = %q, want local", cfg.Mode)
+	}
+}
+
+func TestLoadLegacyConfigDefaultsToRemoteMode(t *testing.T) {
+	setTestHome(t)
+	path, err := Path()
+	if err != nil {
+		t.Fatalf("failed to get config path: %v", err)
+	}
+	legacy := "host: 127.0.0.1\nport: 8880\n"
+	if err := os.WriteFile(path, []byte(legacy), 0600); err != nil {
+		t.Fatalf("failed to write legacy config: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+	if cfg.Mode != "remote" {
+		t.Fatalf("legacy mode = %q, want remote", cfg.Mode)
+	}
+}

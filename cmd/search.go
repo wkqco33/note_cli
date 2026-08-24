@@ -23,6 +23,7 @@ var searchCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() { _ = client.Close() }()
 
 		// 플래그가 하나도 입력되지 않았을 경우 TUI 표시
 		if searchTitle == "" && searchContent == "" && searchFile == "" {

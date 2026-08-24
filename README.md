@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/wkqco33/note_cli)](https://github.com/wkqco33/note_cli/releases)
 
 터미널에서 빠르게 노트를 작성하고 관리할 수 있는 CLI 도구입니다.  
-원격 API 서버에 노트를 저장하며, JWT 기반 인증을 통해 사용자별 노트를 안전하게 관리합니다.
+기본적으로 로컬 SQLite 데이터베이스를 사용하며, 필요하면 원격 API 서버에 연결해 사용자별 노트를 관리할 수 있습니다.
 
 ---
 
@@ -21,7 +21,8 @@
 - **강력한 검색**: 노트 제목, 내용, 첨부파일 이름 기반 통합 검색 기능
 - **대용량 파일 지원**: 스트리밍 전송 기반으로 최대 500MB까지 파일 업로드/다운로드 지원
 - **JWT 인증**: 액세스 토큰 만료 시 자동 재발급
-- **주문형 로컬 설정**: `~/.config/note_cli/config.yaml`에 호스트/포트 및 인증 토큰 저장
+- **저장 모드 선택**: 로컬 SQLite 또는 원격 API 사용
+- **주문형 로컬 설정**: `~/.config/note_cli/config.yaml`에 저장 모드, 호스트/포트 및 인증 토큰 저장
 
 ---
 
@@ -29,7 +30,7 @@
 
 - [Go](https://golang.org/) 1.26 이상 (go.mod의 `go` 지시자 참고)
 - `vim`, `nano` 등의 외부 편집기 (또는 `$EDITOR` 환경변수 설정)
-- 노트 데이터를 저장할 API 서버 (`http://127.0.0.1:8880/api/v1`)
+- 원격 모드 사용 시 노트 데이터를 저장할 API 서버 (`http://127.0.0.1:8880/api/v1`)
 
 > API 서버 구성에 대한 자세한 내용은 [CLIENT_API_GUIDE.md](./CLIENT_API_GUIDE.md)를 참고하세요.
 
@@ -61,18 +62,32 @@ task install
 ## 빠른 시작
 
 ```bash
-# 1. 계정 등록
-ncli register
-
-# 2. 로그인
-ncli login
-
-# 3. 노트 추가
+# 로컬 모드에서는 API 서버나 계정 없이 바로 사용할 수 있습니다.
+# 1. 노트 추가
 ncli add
 
-# 4. 노트 목록 확인
+# 2. 노트 목록 확인
 ncli list
 ```
+
+로컬 데이터베이스는 `~/.local/share/note_cli/notes.db`에, 첨부파일은 같은 경로의 `files/` 디렉토리에 저장됩니다.
+
+원격 API를 사용하려면 저장 모드를 변경한 뒤 회원가입과 로그인을 실행합니다.
+
+```bash
+ncli config set mode remote
+ncli register
+ncli login
+ncli list
+```
+
+로컬 모드로 돌아오려면 다음을 실행합니다.
+
+```bash
+ncli config set mode local
+```
+
+로컬과 원격 데이터는 자동으로 동기화되지 않습니다. 저장소 간 데이터 이동은 `export`와 `import`를 사용하세요.
 
 ---
 

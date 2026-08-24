@@ -18,6 +18,7 @@ var downloadCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() { _ = client.Close() }()
 
 		var id int
 		var filename string

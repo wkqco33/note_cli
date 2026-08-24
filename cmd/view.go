@@ -40,6 +40,7 @@ var viewCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() { _ = client.Close() }()
 
 		id, ok, err := resolveBoardID(client, args, "조회할 노트를 선택하세요", "조회할 노트가 없습니다.")
 		if err != nil || !ok {

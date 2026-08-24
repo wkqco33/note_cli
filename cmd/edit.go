@@ -23,6 +23,7 @@ var editCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() { _ = client.Close() }()
 
 		id, ok, err := resolveBoardID(client, args, "수정할 노트를 선택하세요", "수정할 노트가 없습니다.")
 		if err != nil || !ok {

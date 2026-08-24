@@ -29,6 +29,7 @@ var importCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() { _ = client.Close() }()
 
 		importPath := args[0]
 		fmt.Printf("복원 준비 중... 백업 파일: %s\n", importPath)

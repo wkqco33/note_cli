@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	Mode         string `yaml:"mode,omitempty"`
 	Host         string `yaml:"host"`
 	Port         int    `yaml:"port"`
 	AccessToken  string `yaml:"access_token,omitempty"`
@@ -49,6 +50,7 @@ func Load() (*Config, error) {
 		if os.IsNotExist(err) {
 			// 파일이 없으면 기본 설정값으로 생성
 			defaultCfg := &Config{
+				Mode: "local",
 				Host: "127.0.0.1",
 				Port: 8880,
 			}
@@ -71,11 +73,31 @@ func Load() (*Config, error) {
 	if cfg.Host == "" {
 		cfg.Host = "127.0.0.1"
 	}
+	if cfg.Mode == "" {
+		// mode가 없던 기존 설정은 원격 API 설정으로 간주해 호환성을 유지한다.
+		cfg.Mode = "remote"
+	}
+	if cfg.Mode != "local" && cfg.Mode != "remote" {
+		return nil, fmt.Errorf("mode는 local 또는 remote여야 합니다: %s", cfg.Mode)
+	}
 	if cfg.Port == 0 {
 		cfg.Port = 8880
 	}
 
 	return &cfg, nil
+}
+
+// DatabasePath 로컬 모드에서 사용하는 SQLite 데이터베이스 경로를 반환한다.
+func DatabasePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(home, ".local", "share", "note_cli")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "notes.db"), nil
 }
 
 // Save 설정을 ~/.config/note_cli/config.yaml에 저장한다.

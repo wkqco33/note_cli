@@ -18,6 +18,7 @@ var deleteCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() { _ = client.Close() }()
 
 		target := "note"
 		if deleteFile {

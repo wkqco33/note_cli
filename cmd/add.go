@@ -18,6 +18,7 @@ var addCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer func() { _ = client.Close() }()
 
 		if err := validateAttachedFiles(attachedFiles); err != nil {
 			return err

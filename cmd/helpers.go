@@ -10,6 +10,7 @@ import (
 
 	"note_cli/api"
 	"note_cli/config"
+	"note_cli/local"
 
 	"github.com/charmbracelet/huh"
 	"github.com/dustin/go-humanize"
@@ -41,10 +42,21 @@ func newClient() (*api.Client, error) {
 	return api.NewClient(cfg), nil
 }
 
-func newAuthenticatedClient() (*api.Client, error) {
+func newAuthenticatedClient() (NoteStore, error) {
 	cfg, err := loadConfig()
 	if err != nil {
 		return nil, err
+	}
+	if cfg.Mode == "local" {
+		path, err := config.DatabasePath()
+		if err != nil {
+			return nil, fmt.Errorf("로컬 데이터베이스 경로를 확인하지 못했습니다: %w", err)
+		}
+		store, err := local.Open(path)
+		if err != nil {
+			return nil, err
+		}
+		return store, nil
 	}
 	if cfg.AccessToken == "" {
 		return nil, fmt.Errorf("로그인이 필요합니다. '%s login'을 먼저 실행하세요", binaryName())
@@ -80,7 +92,7 @@ func runNoteForm(title, category *string) error {
 }
 
 // uploadAttachedFiles 첨부 파일들을 순서대로 업로드하고 URL 목록 반환
-func uploadAttachedFiles(client *api.Client, paths []string) ([]string, error) {
+func uploadAttachedFiles(client NoteStore, paths []string) ([]string, error) {
 	var urls []string
 	for _, path := range paths {
 		fmt.Printf("파일 첨부 중: %s\n", path)
@@ -97,7 +109,7 @@ func uploadAttachedFiles(client *api.Client, paths []string) ([]string, error) {
 
 // resolveBoardID args에 ID가 있으면 파싱하고, 없으면 목록에서 선택하게 한다.
 // ok=false이고 err=nil이면 안내를 이미 출력했으므로 호출자는 정상 종료하면 된다.
-func resolveBoardID(client *api.Client, args []string, prompt, emptyMsg string) (id int, ok bool, err error) {
+func resolveBoardID(client NoteStore, args []string, prompt, emptyMsg string) (id int, ok bool, err error) {
 	if len(args) == 1 {
 		id, err = parseIDArg(args)
 		return id, err == nil, err
@@ -123,7 +135,7 @@ func resolveBoardID(client *api.Client, args []string, prompt, emptyMsg string) 
 
 // resolveFileID 파일 목록에서 선택하게 한다. 선택 후 파일 정보 조회용으로
 // 파일 목록도 함께 반환한다. ok=false, err=nil이면 정상 종료하면 된다.
-func resolveFileID(client *api.Client, prompt, emptyMsg string) (id int, files []api.FileRead, ok bool, err error) {
+func resolveFileID(client NoteStore, prompt, emptyMsg string) (id int, files []api.FileRead, ok bool, err error) {
 	files, err = client.GetFiles()
 	if err != nil {
 		return 0, nil, false, fmt.Errorf("파일 목록을 불러오지 못했습니다: %w", err)
