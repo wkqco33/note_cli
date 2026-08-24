@@ -135,6 +135,6 @@ func decodeSecretFields(cfg *Config) {
 	}
 
 	if cleared {
-		fmt.Fprintln(os.Stderr, "경고: 저장된 인증 정보를 복호화하지 못해 초기화했습니다. 'login' 명령으로 다시 로그인하세요.")
+		_, _ = fmt.Fprintln(os.Stderr, "경고: 저장된 인증 정보를 복호화하지 못해 초기화했습니다. 'login' 명령으로 다시 로그인하세요.")
 	}
 }

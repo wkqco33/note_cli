@@ -354,7 +354,7 @@ func TestDownloadFileSanitizesContentDisposition(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", `attachment; filename="..\..\evil.txt"`)
-		io.WriteString(w, "data")
+		_, _ = io.WriteString(w, "data")
 	}))
 	defer server.Close()
 
@@ -385,7 +385,7 @@ func TestDoRequestResetsBodyOnRetry(t *testing.T) {
 		switch r.URL.Path {
 		case "/auth/refresh":
 			w.Header().Set("Content-Type", "application/json")
-			io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
+			_, _ = io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
 		case "/boards":
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
@@ -398,7 +398,7 @@ func TestDoRequestResetsBodyOnRetry(t *testing.T) {
 				return
 			}
 			w.WriteHeader(http.StatusCreated)
-			io.WriteString(w, `{"id":1}`)
+			_, _ = io.WriteString(w, `{"id":1}`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -435,14 +435,14 @@ func TestUploadFileRefreshesTokenBeforeUpload(t *testing.T) {
 		switch r.URL.Path {
 		case "/auth/refresh":
 			w.Header().Set("Content-Type", "application/json")
-			io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
+			_, _ = io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
 		case "/boards/me":
 			if r.Header.Get("Authorization") == "Bearer expired-token" {
 				http.Error(w, `{"detail":"expired"}`, http.StatusUnauthorized)
 				return
 			}
 			w.WriteHeader(http.StatusOK)
-			io.WriteString(w, `[]`)
+			_, _ = io.WriteString(w, `[]`)
 		case "/files/upload":
 			uploadCalls++
 			if r.Header.Get("Authorization") != "Bearer new-token" {
@@ -453,7 +453,7 @@ func TestUploadFileRefreshesTokenBeforeUpload(t *testing.T) {
 				t.Fatalf("failed to read upload body: %v", err)
 			}
 			w.Header().Set("Content-Type", "application/json")
-			io.WriteString(w, `{"id":1,"filename":"test.txt","original_filename":"test.txt","file_size":5,"content_type":"text/plain","url":"http://example.com/test.txt","user_id":1,"created_at":"2024-01-01T00:00:00"}`)
+			_, _ = io.WriteString(w, `{"id":1,"filename":"test.txt","original_filename":"test.txt","file_size":5,"content_type":"text/plain","url":"http://example.com/test.txt","user_id":1,"created_at":"2024-01-01T00:00:00"}`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -497,7 +497,7 @@ func TestUploadFileFailsWhenTokenCannotBeRefreshed(t *testing.T) {
 			http.Error(w, `{"detail":"expired"}`, http.StatusUnauthorized)
 		case "/files/upload":
 			uploadCalls++
-			io.WriteString(w, `{}`)
+			_, _ = io.WriteString(w, `{}`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -532,7 +532,7 @@ func TestUploadFileNoRetryOn401DuringStream(t *testing.T) {
 		switch r.URL.Path {
 		case "/boards/me":
 			w.WriteHeader(http.StatusOK)
-			io.WriteString(w, `[]`)
+			_, _ = io.WriteString(w, `[]`)
 		case "/files/upload":
 			uploadCalls++
 			// 토큰 검증 통과 후 업로드 시점에 401 반환 (재시도 없이 실패해야 함)
@@ -570,7 +570,7 @@ func TestPostStreamDoesNotRetryOn401(t *testing.T) {
 		switch r.URL.Path {
 		case "/auth/refresh":
 			w.Header().Set("Content-Type", "application/json")
-			io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
+			_, _ = io.WriteString(w, `{"access_token":"new-token","refresh_token":"next-refresh","token_type":"bearer"}`)
 		case "/stream-upload":
 			postCalls++
 			http.Error(w, `{"detail":"expired"}`, http.StatusUnauthorized)

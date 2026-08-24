@@ -30,7 +30,7 @@ var rootCmd = &cobra.Command{
 // Execute 설정된 모든 자식 명령을 실행하고 플래그 값을 설정
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
