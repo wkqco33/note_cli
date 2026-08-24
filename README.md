@@ -1,5 +1,12 @@
 # 📝 Note CLI
 
+> **Note**: 오픈소스로 공개하기 위한 문서가 준비되어 있습니다. 기여는 [CONTRIBUTING.md](./CONTRIBUTING.md)를, 보안 취약점 신고는 [SECURITY.md](./SECURITY.md)를 참고하세요.
+
+[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://golang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![CI](https://github.com/wkqco33/note_cli/actions/workflows/ci.yml/badge.svg)](https://github.com/wkqco33/note_cli/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/wkqco33/note_cli)](https://github.com/wkqco33/note_cli/releases)
+
 터미널에서 빠르게 노트를 작성하고 관리할 수 있는 CLI 도구입니다.  
 원격 API 서버에 노트를 저장하며, JWT 기반 인증을 통해 사용자별 노트를 안전하게 관리합니다.
 
@@ -186,9 +193,11 @@ export EDITOR=nano
 ```yaml
 host: 127.0.0.1
 port: 8880
-access_token: "..."
-refresh_token: "..."
+access_token: "enc:..."
+refresh_token: "enc:..."
 ```
+
+> **보안 참고**: 액세스 토큰, 리프레시 토큰, 자동 로그인 비밀번호는 평문이 아니라 **`enc:` 접두사와 함께 플랫폼별 암호화**되어 저장됩니다 (Windows는 DPAPI, 그 외는 AES-256-GCM). 설정 파일 권한은 `0600`으로 생성됩니다. 보안 취약점 신고는 [SECURITY.md](./SECURITY.md)를 참고하세요.
 
 - **host / port**: API 서버 주소를 변경할 때 수정합니다. 기본값은 `127.0.0.1` 및 `8880` 입니다.
 - **액세스 토큰**: 유효 기간 30분, 만료 시 자동 재발급
@@ -324,3 +333,14 @@ note_cli/
 ## 라이선스
 
 이 프로젝트는 [MIT 라이선스](./LICENSE) 하에 배포됩니다.
+
+---
+
+## 기여
+
+기여를 환영합니다. 자세한 개발 방식(TDD, 코딩 규칙, 커밋 규칙)과 PR 절차는 [CONTRIBUTING.md](./CONTRIBUTING.md)를 참고하세요.
+
+- [버그 리포트](./.github/ISSUE_TEMPLATE/bug_report.yml)
+- [기능 제안](./.github/ISSUE_TEMPLATE/feature_request.yml)
+- [기여자 행동 강령](./CODE_OF_CONDUCT.md)
+- [보안 정책](./SECURITY.md)
