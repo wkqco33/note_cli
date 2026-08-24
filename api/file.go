@@ -120,7 +120,9 @@ func (c *Client) DownloadFile(fileID int, destDir string, filename string) (stri
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if filename == "" {
 		contentDisp := resp.Header.Get("Content-Disposition")

@@ -79,8 +79,7 @@ var searchCmd = &cobra.Command{
 			}
 		}
 
-		var results []api.BoardRead
-		results = filterBoards(notes, files, searchTitle, searchContent, searchFile)
+		results := filterBoards(notes, files, searchTitle, searchContent, searchFile)
 
 		if len(results) == 0 {
 			fmt.Println("검색 결과가 없습니다.")

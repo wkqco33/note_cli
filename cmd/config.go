@@ -40,14 +40,14 @@ var configCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintf(w, "host\t%s\n", cfg.Host)
-		fmt.Fprintf(w, "port\t%d\n", cfg.Port)
-		fmt.Fprintf(w, "auto_login\t%s\n", autoLogin)
+		_, _ = fmt.Fprintf(w, "host\t%s\n", cfg.Host)
+		_, _ = fmt.Fprintf(w, "port\t%d\n", cfg.Port)
+		_, _ = fmt.Fprintf(w, "auto_login\t%s\n", autoLogin)
 		if cfg.Username != "" {
-			fmt.Fprintf(w, "계정\t%s\n", cfg.Username)
+			_, _ = fmt.Fprintf(w, "계정\t%s\n", cfg.Username)
 		}
-		fmt.Fprintf(w, "로그인\t%s\n", loginStatus)
-		fmt.Fprintf(w, "설정 파일\t%s\n", path)
+		_, _ = fmt.Fprintf(w, "로그인\t%s\n", loginStatus)
+		_, _ = fmt.Fprintf(w, "설정 파일\t%s\n", path)
 		_ = w.Flush()
 		return nil
 	},

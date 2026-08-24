@@ -124,7 +124,9 @@ func TestFindBackupFileEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open zip: %v", err)
 	}
-	defer r.Close()
+	defer func() {
+		_ = r.Close()
+	}()
 
 	if findBackupFileEntry(r.File, "files/1_a.txt") == nil {
 		t.Fatal("expected entry found")

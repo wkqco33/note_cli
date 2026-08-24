@@ -118,7 +118,7 @@ var viewCmd = &cobra.Command{
 							fmt.Printf("     %s\n", urlStyle.Render(urlStr))
 						}
 						fmt.Println()
-						os.Remove(tmpPath)
+						_ = os.Remove(tmpPath)
 					} else {
 						fmt.Printf("     %s\n", urlStyle.Render(urlStr))
 					}

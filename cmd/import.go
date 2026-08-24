@@ -164,7 +164,7 @@ var importCmd = &cobra.Command{
 				// 업로드
 				fmt.Printf("파일 업로드 중: %s -> ", bf.OriginalFilename)
 				uploaded, err := client.UploadFile(tmpPath)
-				os.Remove(tmpPath) // 업로드 후 즉시 제거
+				_ = os.Remove(tmpPath) // 업로드 후 즉시 제거
 				if err != nil {
 					fmt.Printf("실패 (%v)\n", err)
 					continue

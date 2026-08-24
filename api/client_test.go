@@ -110,7 +110,7 @@ func TestDoRequestStreamRetriesAfterRefresh(t *testing.T) {
 			if got := r.Header.Get("Authorization"); got != "Bearer new-token" {
 				t.Fatalf("unexpected authorization header: %q", got)
 			}
-			io.WriteString(w, "stream-ok")
+			_, _ = io.WriteString(w, "stream-ok")
 		default:
 			http.NotFound(w, r)
 		}
@@ -255,14 +255,14 @@ func TestDoRequestAutoLoginAfterRefreshFailure(t *testing.T) {
 				t.Fatalf("unexpected credentials: %q / %q", r.FormValue("username"), r.FormValue("password"))
 			}
 			w.Header().Set("Content-Type", "application/json")
-			io.WriteString(w, `{"access_token":"relogin-token","refresh_token":"relogin-refresh","token_type":"bearer"}`)
+			_, _ = io.WriteString(w, `{"access_token":"relogin-token","refresh_token":"relogin-refresh","token_type":"bearer"}`)
 		case "/protected":
 			protectedCalls++
 			if r.Header.Get("Authorization") != "Bearer relogin-token" {
 				http.Error(w, `{"detail":"expired"}`, http.StatusUnauthorized)
 				return
 			}
-			io.WriteString(w, `{"ok":true}`)
+			_, _ = io.WriteString(w, `{"ok":true}`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -585,7 +585,7 @@ func TestPostStreamDoesNotRetryOn401(t *testing.T) {
 	rc := io.NopCloser(strings.NewReader("payload"))
 	resp, err := client.postStream("/stream-upload", "application/octet-stream", rc)
 	if err == nil {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		t.Fatal("expected error, got nil")
 	}
 	if postCalls != 1 {
