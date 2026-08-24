@@ -9,6 +9,11 @@ ncli
 # Taskfile 캐시
 .task/
 
+# 빌드 산출물 (바이너리)
+build/
+dist/
+*.bin
+
 # Created by https://www.toptal.com/developers/gitignore/api/go,visualstudiocode,linux,macos,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=go,visualstudiocode,linux,macos,windows
 
