@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
-	"github.com/wkqco/tdraw"
+	"github.com/wkqco33/tdraw"
 )
 
 var noImage bool

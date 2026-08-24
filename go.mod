@@ -11,9 +11,10 @@ require (
 	github.com/mattn/go-runewidth v0.0.17
 	github.com/schollz/progressbar/v3 v3.19.0
 	github.com/spf13/cobra v1.10.2
-	github.com/wkqco/tdraw v0.0.0-00010101000000-000000000000
+	github.com/wkqco33/tdraw v0.1.5
 	golang.org/x/sys v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
+	modernc.org/sqlite v1.57.0
 )
 
 require (
@@ -59,7 +60,4 @@ require (
 	modernc.org/libc v1.74.4 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.57.0 // indirect
 )
-
-replace github.com/wkqco/tdraw => ./tdraw
