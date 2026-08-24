@@ -24,6 +24,14 @@ jobs:
         with:
           go-version-file: "go.mod"
 
+      - name: Run Tests
+        env:
+          NOTE_CLI_API_KEY: ${{ secrets.API_KEY }}
+          NOTE_CLI_SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        run: |
+          go vet ./...
+          go test -race -count=1 ./...
+
       - name: Build Binary
         env:
           GOOS: ${{ matrix.goos }}

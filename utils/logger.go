@@ -17,6 +17,11 @@ var logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 	Level: logLevel,
 }))
 
+// SetLoggerHandler 테스트 등에서 로거의 출력 핸들러를 교체한다.
+func SetLoggerHandler(h slog.Handler) {
+	logger = slog.New(h)
+}
+
 // SetupLogger는 DebugMode 값에 따라 로거의 출력 레벨을 재설정합니다.
 func SetupLogger() {
 	if DebugMode {

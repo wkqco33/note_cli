@@ -148,11 +148,15 @@ func resolveFileID(client *api.Client, prompt, emptyMsg string) (id int, files [
 	return id, files, true, nil
 }
 
-// printBoardTable 노트 목록을 표 형태로 출력 (list/search 공용)
+// buildBoardTable 노트 목록을 표 텍스트로 구성한다. (리팩터링 후 printBoardTable가 사용)
 // tabwriter는 문자의 표시 폭이 아닌 룬 수 기준으로 패딩하므로 한글 등
 // 전각 문자가 포함되면 정렬이 깨진다. 대신 runewidth로 표시 폭을 계산해
 // 수동으로 패딩한다.
-func printBoardTable(notes []api.BoardRead) {
+func buildBoardTable(notes []api.BoardRead) string {
+	if len(notes) == 0 {
+		return ""
+	}
+
 	const (
 		colID    = 5
 		colTitle = 42
@@ -161,19 +165,30 @@ func printBoardTable(notes []api.BoardRead) {
 		sep      = "  "
 	)
 
+	var b strings.Builder
+
 	header := padRight("ID", colID) + sep +
 		padRight("TITLE", colTitle) + sep +
 		padRight("CATEGORY", colCat) + sep +
 		"UPDATED"
-	fmt.Fprintln(os.Stdout, header)
+	b.WriteString(header)
+	b.WriteString("\n")
 
 	for _, note := range notes {
 		row := padRight(fmt.Sprintf("%d", note.ID), colID) + sep +
 			padRight(truncateText(note.Title, 40), colTitle) + sep +
 			padRight(note.Category, colCat) + sep +
 			formatTimestamp(note.UpdatedAt, colDate)
-		fmt.Fprintln(os.Stdout, row)
+		b.WriteString(row)
+		b.WriteString("\n")
 	}
+
+	return b.String()
+}
+
+// printBoardTable 노트 목록을 표 형태로 출력 (list/search 공용)
+func printBoardTable(notes []api.BoardRead) {
+	fmt.Fprint(os.Stdout, buildBoardTable(notes))
 }
 
 // padRight 문자열을 표시 폭 기준으로 width칸이 되도록 우측에 공백을 채운다.

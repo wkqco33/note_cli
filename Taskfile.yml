@@ -51,9 +51,9 @@ tasks:
         ignore_error: true
 
   test:
-    desc: Run all unit tests
+    desc: Run all unit tests with race detector and coverage
     cmds:
-      - go test {{.TEST_ARGS | default "-v"}} ./...
+      - go test {{.TEST_ARGS | default "-v -race -cover"}} ./...
 
   fmt:
     desc: Format all Go source files
