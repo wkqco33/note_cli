@@ -1,7 +1,5 @@
 package buildinfo
 
 var (
-	APIKey    = ""
-	SecretKey = ""
-	Version   = "dev"
+	Version = "dev"
 )

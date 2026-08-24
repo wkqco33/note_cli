@@ -24,9 +24,6 @@ jobs:
           go-version-file: "go.mod"
 
       - name: Run Tests
-        env:
-          NOTE_CLI_API_KEY: ${{ secrets.API_KEY }}
-          NOTE_CLI_SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           go vet ./...
           go test -race -count=1 ./...
@@ -35,8 +32,6 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          NOTE_CLI_API_KEY: ${{ secrets.API_KEY }}
-          NOTE_CLI_SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           BINARY_NAME=ncli
 
@@ -45,7 +40,9 @@ jobs:
           fi
 
           # 크로스플랫폼 빌드 (ppm.json bin_name 과 일치하는 ncli 로 산출물명 고정)
-          go build -ldflags="-s -w -X 'note_cli/config/buildinfo.APIKey=${NOTE_CLI_API_KEY}' -X 'note_cli/config/buildinfo.SecretKey=${NOTE_CLI_SECRET_KEY}' -X 'note_cli/config/buildinfo.Version=${GITHUB_REF_NAME}'" -o "$BINARY_NAME" main.go
+          # 보안: 시크릿을 바이너리에 임베드하지 않음. 인증은 런타임 로그인(JWT)과
+          # 사용자 환경(.env/환경변수)의 키만 사용한다.
+          go build -ldflags="-s -w -X 'note_cli/config/buildinfo.Version=${GITHUB_REF_NAME}'" -o "$BINARY_NAME" main.go
 
           # 아카이브 생성 (ppm 자산 명명 규칙: {bin_name}_{os}_{arch}.{ext})
           if [ "${{ matrix.goos }}" = "windows" ]; then
