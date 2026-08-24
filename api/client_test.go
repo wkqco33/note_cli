@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"note_cli/config"
 )
@@ -213,7 +216,7 @@ func TestParseAPIErrorFriendlyMessages(t *testing.T) {
 
 func TestParseAPIErrorFallsBackToRawBody(t *testing.T) {
 	err := parseAPIError(http.StatusInternalServerError, []byte("boom"))
-	if err == nil || err.Error() != "API error: status 500 - boom" {
+	if err == nil || err.Error() != "API 오류: status 500 - boom" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -584,5 +587,42 @@ func TestPostStreamDoesNotRetryOn401(t *testing.T) {
 	}
 	if postCalls != 1 {
 		t.Fatalf("expected exactly 1 POST call (no retry), got %d", postCalls)
+	}
+}
+
+func makeJWT(exp int64) string {
+	payload := fmt.Sprintf(`{"exp":%d}`, exp)
+	return "header." + base64.RawURLEncoding.EncodeToString([]byte(payload)) + ".sig"
+}
+
+func TestTokenStillValid(t *testing.T) {
+	now := time.Now().Unix()
+	tests := []struct {
+		name  string
+		token string
+		want  bool
+	}{
+		{name: "유효 기간 내", token: makeJWT(now + 3600), want: true},
+		{name: "만료됨", token: makeJWT(now - 3600), want: false},
+		{name: "exp 없음", token: makeJWT(0), want: false},
+		{name: "비 JWT 형식", token: "not-a-jwt", want: false},
+		{name: "빈 토큰", token: "", want: false},
+		{name: "잘못된 base64", token: "h.!!!.s", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tokenStillValid(tt.token); got != tt.want {
+				t.Fatalf("tokenStillValid(%q) = %v, want %v", tt.token, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDecodeJWTClaims(t *testing.T) {
+	if got := decodeJWTClaims(makeJWT(123)); got != `{"exp":123}` {
+		t.Fatalf("unexpected payload: %q", got)
+	}
+	if got := decodeJWTClaims("invalid"); got != "" {
+		t.Fatalf("expected empty for malformed token, got %q", got)
 	}
 }

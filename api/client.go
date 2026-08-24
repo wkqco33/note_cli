@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -63,7 +64,7 @@ func (c *Client) doRequest(req *http.Request, retryOn401 bool) ([]byte, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("응답 본문을 읽지 못했습니다: %w", err)
 	}
 
 	utils.Debugf("API Response Body: %s", string(body))
@@ -124,12 +125,9 @@ func (c *Client) getStream(endpoint string) (*http.Response, error) {
 	return c.doRequestStream(req, true)
 }
 
-// postStream 스트리밍 본문을 사용하는 POST 요청 헬퍼
-//
-// io.Pipe 등 복원 불가능한 스트리밍 본문은 401 재시도 시 req.GetBody가
-// nil이어서 본문을 재구성할 수 없습니다. 따라서 스트리밍 POST 요청은
-// 401 자동 재시도를 비활성화하고, 호출자가 ensureValidToken로 사전에
-// 토큰을 검증해야 합니다.
+// postStream 스트리밍 본문을 사용하는 POST 요청 헬퍼.
+// io.Pipe 등 복원 불가능한 본문은 401 재시도가 불가능하므로 재시도를 끄고,
+// 호출자가 ensureValidToken로 사전에 토큰을 검증해야 한다.
 func (c *Client) postStream(endpoint string, contentType string, bodyReader io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest("POST", c.BaseURL+endpoint, bodyReader)
 	if err != nil {
@@ -139,11 +137,14 @@ func (c *Client) postStream(endpoint string, contentType string, bodyReader io.R
 	return c.doRequestStream(req, false)
 }
 
-// ensureValidToken는 가벼운 인증 GET 요청으로 액세스 토큰을 사전 검증합니다.
-// 토큰이 만료된 경우 비스트림 요청의 401 재시도 경로(refresh / auto-login)를
-// 통해 자동 갱신됩니다. 스트리밍 업로드 전에 호출하여 401 재시도가 불가능한
-// 파이프 본문 요청이 실패하는 문제를 예방합니다.
+// ensureValidToken 가벼운 인증 GET 요청으로 액세스 토큰을 사전 검증한다.
+// 만료 시 비스트림 요청의 401 재시도 경로를 통해 자동 갱신된다.
+// 스트리밍 업로드 전에 호출해 재시도 불가능한 파이프 본문 요청의 실패를 예방한다.
 func (c *Client) ensureValidToken() error {
+	// 유효한 JWT면 로컬에서 만료 여부만 판단해 서버 호출을 줄인다.
+	if tokenStillValid(c.Config.AccessToken) {
+		return nil
+	}
 	if _, err := c.get("/boards/me"); err != nil {
 		return fmt.Errorf("인증 토큰 확인에 실패했습니다: %w", err)
 	}
@@ -162,7 +163,7 @@ func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("요청 실패: %w", err)
 	}
 
 	c.logResponse(resp, stream)
@@ -173,7 +174,7 @@ func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*
 	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("응답 본문을 읽지 못했습니다: %w", err)
 	}
 
 	utils.Debugf("API Error Body: %s", string(body))
@@ -253,7 +254,7 @@ func resetRequestBody(req *http.Request) error {
 
 	body, err := req.GetBody()
 	if err != nil {
-		return fmt.Errorf("failed to reset request body: %w", err)
+		return fmt.Errorf("요청 본문을 재구성하지 못했습니다: %w", err)
 	}
 	req.Body = body
 
@@ -278,7 +279,7 @@ func parseAPIError(statusCode int, body []byte) error {
 		return &APIError{Detail: msg}
 	}
 
-	return fmt.Errorf("API error: status %d - %s", statusCode, string(body))
+	return fmt.Errorf("API 오류: status %d - %s", statusCode, string(body))
 }
 
 // friendlyAuthMessage 인증 관련 HTTP 상태 코드를 사용자 안내 문구로 변환.
@@ -320,4 +321,34 @@ func (c *Client) logResponse(resp *http.Response, stream bool) {
 	}
 
 	utils.Debugf("API Response: Status %d %s", resp.StatusCode, resp.Status)
+}
+
+// tokenStillValid JWT의 exp 클레임을 로컬에서 검사해 아직 유효한지 판단한다.
+// 파싱에 실패하면(비 JWT 토큰 등) 서버 검증을 위해 false를 반환한다.
+func tokenStillValid(token string) bool {
+	payload := decodeJWTClaims(token)
+	if payload == "" {
+		return false
+	}
+	var claims struct {
+		Exp int64 `json:"exp"`
+	}
+	if err := json.Unmarshal([]byte(payload), &claims); err != nil || claims.Exp == 0 {
+		return false
+	}
+	return time.Now().Unix() < claims.Exp
+}
+
+// decodeJWTClaims JWT에서 페이로드 부분을 추출해 Base64 디코딩한다.
+// 형식이 아니면 빈 문자열을 반환한다.
+func decodeJWTClaims(token string) string {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return ""
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return ""
+	}
+	return string(raw)
 }

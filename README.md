@@ -261,12 +261,12 @@ note_cli/
 │   ├── board.go                  # 노트 CRUD API 호출
 │   ├── file.go                   # 파일 업로드/다운로드/삭제 (스트리밍)
 │   ├── models.go                 # 데이터 구조체 및 APIError 정의
+│   ├── decode.go                 # JSON 역직렬화 공용 헬퍼
 │   ├── api_test.go               # 모델 직렬화 단위 테스트
 │   └── client_test.go            # 401 재시도/스트림/본문 재전송 단위 테스트
 ├── cmd/
 │   ├── root.go                   # 루트 명령어 (Cobra, RunE 전파)
 │   ├── helpers.go                # 검증/포맷/TUI 선택 공용 헬퍼
-│   ├── helpers_test.go           # 헬퍼 단위 테스트
 │   ├── register.go               # register 명령어
 │   ├── login.go                  # login 명령어
 │   ├── add.go                    # add 명령어
@@ -278,14 +278,22 @@ note_cli/
 │   ├── search.go                 # search 명령어 (제목/내용/파일명)
 │   ├── export.go                 # export 백업 명령어
 │   ├── import.go                 # import 복원 명령어
+│   ├── config.go                 # config 명령어 (설정 조회/수정)
 │   ├── clean.go                  # 임시 캐시 정리 명령어
 │   ├── version.go                # version 명령어
+│   ├── helpers_test.go           # 헬퍼 단위 테스트
 │   ├── search_test.go            # 검색 필터링 단위 테스트
 │   ├── export_test.go            # 백업 직렬화 단위 테스트
-│   └── import_test.go            # 복원 매핑/아카이브 탐색 단위 테스트
+│   ├── import_test.go            # 복원 매핑/아카이브 탐색 단위 테스트
+│   ├── clean_test.go             # 캐시 정리 단위 테스트
+│   ├── config_test.go            # 설정 적용 단위 테스트
+│   └── delete_test.go            # 삭제 대상 매핑 단위 테스트
 ├── config/
 │   ├── config.go                 # 설정 파일 로드/저장 (~/.config/note_cli/config.yaml)
 │   ├── secrets.go                # 런타임 시크릿 해석 (env > .env > 빌드타임 내장)
+│   ├── secure.go                 # 비밀값 암호화/복호화 (플랫폼별 위임)
+│   ├── secure_fallback.go        # 비 Windows AES-256-GCM 암호화
+│   ├── secure_windows.go         # Windows DPAPI 암호화
 │   ├── secrets_test.go           # 시크릿 해석 단위 테스트
 │   └── buildinfo/                # ldflags 주입용 빌드 정보
 ├── tui/

@@ -9,8 +9,7 @@ import (
 )
 
 // resolveEditorCommand EDITOR 환경변수를 실행 커맨드와 인자로 분해한다.
-// 값 전체가 실행 파일 경로면 그대로 사용하고 (공백 포함 경로 지원),
-// 아니면 "code --wait"처럼 인자가 붙은 형태로 보고 공백으로 분리한다.
+// 값 전체가 실행 파일 경로면 그대로, 아니면 공백 기준으로 분리한다.
 func resolveEditorCommand() (string, []string) {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
@@ -32,23 +31,21 @@ func resolveEditorCommand() (string, []string) {
 	return fields[0], fields[1:]
 }
 
-// OpenEditor opens the user's preferred editor with initial content
-// and returns the user's updated content.
+// OpenEditor 편집기로 초기 내용을 열고 사용자가 수정한 내용을 반환한다.
 func OpenEditor(initialContent string) (string, error) {
 	editor, editorArgs := resolveEditorCommand()
 
 	tempFile, err := os.CreateTemp("", "note_cli_*.md")
 	if err != nil {
-		return "", fmt.Errorf("could not create temp file: %w", err)
+		return "", fmt.Errorf("임시 파일을 생성하지 못했습니다: %w", err)
 	}
 	defer os.Remove(tempFile.Name())
 
 	if initialContent != "" {
 		if _, err := tempFile.WriteString(initialContent); err != nil {
-			return "", fmt.Errorf("could not write initial content: %w", err)
+			return "", fmt.Errorf("초기 내용을 쓰지 못했습니다: %w", err)
 		}
 	}
-	// Close file to allow editor to open and save it properly
 	tempFile.Close()
 
 	cmd := exec.Command(editor, append(editorArgs, tempFile.Name())...)
@@ -57,12 +54,12 @@ func OpenEditor(initialContent string) (string, error) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("editor returned error: %w", err)
+		return "", fmt.Errorf("편집기가 오류를 반환했습니다: %w", err)
 	}
 
 	content, err := os.ReadFile(tempFile.Name())
 	if err != nil {
-		return "", fmt.Errorf("could not read temp file: %w", err)
+		return "", fmt.Errorf("임시 파일을 읽지 못했습니다: %w", err)
 	}
 
 	return string(content), nil

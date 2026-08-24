@@ -32,12 +32,12 @@ func getConfigPath() (string, error) {
 	return filepath.Join(configDir, "config.yaml"), nil
 }
 
-// Path returns the config file path (~/.config/note_cli/config.yaml)
+// Path 설정 파일 경로 반환 (~/.config/note_cli/config.yaml)
 func Path() (string, error) {
 	return getConfigPath()
 }
 
-// Load reads the config file from ~/.config/note_cli/config.yaml
+// Load 설정 파일을 ~/.config/note_cli/config.yaml에서 읽는다.
 func Load() (*Config, error) {
 	path, err := getConfigPath()
 	if err != nil {
@@ -78,7 +78,7 @@ func Load() (*Config, error) {
 	return &cfg, nil
 }
 
-// Save writes the config to ~/.config/note_cli/config.yaml
+// Save 설정을 ~/.config/note_cli/config.yaml에 저장한다.
 // 토큰과 비밀번호는 평문 대신 암호화된 형태로 기록한다.
 func Save(cfg *Config) error {
 	path, err := getConfigPath()

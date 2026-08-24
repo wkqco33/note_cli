@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-// DebugMode determines if debug logs should be printed
+// DebugMode 디버그 로그 출력 여부
 var DebugMode bool
 
 // logLevel 로거 재생성 없이 출력 레벨을 전환하기 위한 동적 레벨 (기본 Info)
@@ -31,7 +31,7 @@ func SetupLogger() {
 	logLevel.Set(slog.LevelInfo)
 }
 
-// Debugf prints formatted debug logs if DebugMode is true
+// Debugf DebugMode가 true일 때 포맷된 디버그 로그를 출력한다.
 func Debugf(format string, v ...interface{}) {
 	if !logger.Enabled(context.Background(), slog.LevelDebug) {
 		return
@@ -39,7 +39,7 @@ func Debugf(format string, v ...interface{}) {
 	logger.Debug(fmt.Sprintf(format, v...))
 }
 
-// Debugln prints debug logs if DebugMode is true
+// Debugln DebugMode가 true일 때 디버그 로그를 출력한다.
 func Debugln(v ...interface{}) {
 	if !logger.Enabled(context.Background(), slog.LevelDebug) {
 		return
