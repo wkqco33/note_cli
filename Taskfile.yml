@@ -1,17 +1,15 @@
-version: '3'
+version: "3"
 
 vars:
   BINARY_NAME: ncli
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
   PREFIX: /usr/local
-  EMBED_API_KEY: '{{ .NOTE_CLI_API_KEY | default .API_KEY }}'
-  EMBED_SECRET_KEY: '{{ .NOTE_CLI_SECRET_KEY | default .SECRET_KEY }}'
-  LDFLAGS: -ldflags "-X 'note_cli/config/buildinfo.APIKey={{.EMBED_API_KEY}}' -X 'note_cli/config/buildinfo.SecretKey={{.EMBED_SECRET_KEY}}' -X 'note_cli/config/buildinfo.Version={{.VERSION}}'"
+  LDFLAGS: -ldflags "-X 'note_cli/config/buildinfo.Version={{.VERSION}}'"
   EXE:
     sh: '{{if eq OS "windows"}}echo {{.BINARY_NAME}}.exe{{else}}echo {{.BINARY_NAME}}{{end}}'
 
-dotenv: ['.env']
+dotenv: [".env"]
 
 tasks:
   build:
@@ -19,11 +17,11 @@ tasks:
     cmds:
       - go build {{.LDFLAGS}} -o {{.EXE}} main.go
     sources:
-      - '**/*.go'
+      - "**/*.go"
       - go.mod
       - go.sum
     generates:
-      - '{{.EXE}}'
+      - "{{.EXE}}"
 
   install:
     desc: Install the binary to {{.PREFIX}}/bin (Unix)

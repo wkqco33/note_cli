@@ -11,9 +11,7 @@ import (
 	"path/filepath"
 )
 
-// 비 Windows 환경에서는 설정 디렉토리의 로컬 키 파일(secret.key, 0600)로
-// AES-256-GCM 암호화한다. 키가 같은 디스크에 있으므로 동일 사용자 권한의
-// 접근까지 막지는 못하지만 설정 파일 열람만으로는 평문이 노출되지 않는다.
+// 비 Windows 환경에서는 설정 디렉토리의 키 파일(secret.key, 0600)로 AES-256-GCM 암호화한다.
 func protectSecret(data []byte) ([]byte, error) {
 	gcm, err := loadAEAD()
 	if err != nil {

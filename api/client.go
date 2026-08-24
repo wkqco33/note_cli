@@ -13,17 +13,13 @@ import (
 	"time"
 )
 
-// httpTimeout 대용량 스트리밍 업로드/다운로드(최대 500MB)가 정상 동작하도록
-// 헤더/응답 시작까지의 대기 시간만 제한하고 본문 전송에는 제약을 두지 않는
-// 커스텀 RoundTripper. ResponseHeaderTimeout은 서버가 응답을 시작하기까지
-// 대기하는 최대 시간이며 본문 스트리밍에는 영향을 주지 않는다.
+// httpTimeout 스트리밍 전송을 위해 응답 시작 대기 시간만 제한하고 본문 전송은 무제한으로 둔다.
 var httpTransport = &http.Transport{
 	ResponseHeaderTimeout: 30 * time.Second,
 	IdleConnTimeout:       90 * time.Second,
 }
 
 // requestTimeout 일반(비스트림) 요청의 전체 제한 시간.
-// 응답 본문 수신이 멈춰도 CLI가 무한 대기하지 않도록 한다.
 const requestTimeout = 60 * time.Second
 
 // Client Note App API 통신용 HTTP 클라이언트 래퍼
@@ -111,9 +107,7 @@ func (c *Client) patchReq(endpoint string, bodyReader io.Reader) ([]byte, error)
 	return c.doRequest(req, true)
 }
 
-// doRequestStream HTTP 요청을 실행하고 스트리밍용 Response 객체 반환
-// 토큰 주입 및 기본 인증 에러 확인 처리
-// 호출자가 반드시 응답 본문을 닫아야 함
+// doRequestStream 스트리밍용 Response를 반환한다. 호출자가 응답 본문을 닫아야 한다.
 func (c *Client) doRequestStream(req *http.Request, retryOn401 bool) (*http.Response, error) {
 	return c.sendRequest(req, retryOn401, true)
 }
@@ -127,9 +121,7 @@ func (c *Client) getStream(endpoint string) (*http.Response, error) {
 	return c.doRequestStream(req, true)
 }
 
-// postStream 스트리밍 본문을 사용하는 POST 요청 헬퍼.
-// io.Pipe 등 복원 불가능한 본문은 401 재시도가 불가능하므로 재시도를 끄고,
-// 호출자가 ensureValidToken로 사전에 토큰을 검증해야 한다.
+// postStream 스트리밍 본문 POST 요청. 복원 불가능한 본문이므로 401 재시도를 끈다.
 func (c *Client) postStream(endpoint string, contentType string, bodyReader io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest("POST", c.BaseURL+endpoint, bodyReader)
 	if err != nil {
@@ -139,9 +131,7 @@ func (c *Client) postStream(endpoint string, contentType string, bodyReader io.R
 	return c.doRequestStream(req, false)
 }
 
-// ensureValidToken 가벼운 인증 GET 요청으로 액세스 토큰을 사전 검증한다.
-// 만료 시 비스트림 요청의 401 재시도 경로를 통해 자동 갱신된다.
-// 스트리밍 업로드 전에 호출해 재시도 불가능한 파이프 본문 요청의 실패를 예방한다.
+// ensureValidToken 스트리밍 업로드 전에 토큰을 사전 검증한다.
 func (c *Client) ensureValidToken() error {
 	// 유효한 JWT면 로컬에서 만료 여부만 판단해 서버 호출을 줄인다.
 	if tokenStillValid(c.Config.AccessToken) {
@@ -196,8 +186,7 @@ func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*
 }
 
 func (c *Client) applyAuthHeaders(req *http.Request) error {
-	// 인증은 로그인/리프레시로 발급된 JWT(AccessToken)만 사용한다.
-	// (보안: 서버 측 API-Key 헤더 검증을 제거하고 JWT로 전환)
+	// 인증은 로그인/리프레시로 발급된 JWT만 사용한다.
 	if c.Config.AccessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
 	}
@@ -213,7 +202,7 @@ func (c *Client) tryAutoLogin(req *http.Request) error {
 	if !c.Config.AutoLogin || c.Config.Username == "" || c.Config.Password == "" {
 		return errAutoLoginUnavailable
 	}
-	// 자동 로그인 요청 자체가 401을 받아 다시 자동 로그인을 시도하는 재귀 방지
+	// 자동 로그인 재귀 방지
 	if c.autoLoggingIn {
 		return errAutoLoginUnavailable
 	}
@@ -275,8 +264,7 @@ func parseAPIError(statusCode int, body []byte) error {
 	return fmt.Errorf("API 오류: status %d - %s", statusCode, string(body))
 }
 
-// friendlyAuthMessage 인증 관련 HTTP 상태 코드를 사용자 안내 문구로 변환.
-// 인증 오류가 아니면 빈 문자열을 반환해 서버 메시지를 그대로 노출한다.
+// friendlyAuthMessage 인증 오류 상태 코드를 사용자 안내 문구로 변환한다.
 func friendlyAuthMessage(statusCode int) string {
 	switch statusCode {
 	case http.StatusUnauthorized:
@@ -306,8 +294,7 @@ func (c *Client) logResponse(resp *http.Response, stream bool) {
 	utils.Debugf("API Response: Status %d %s", resp.StatusCode, resp.Status)
 }
 
-// tokenStillValid JWT의 exp 클레임을 로컬에서 검사해 아직 유효한지 판단한다.
-// 파싱에 실패하면(비 JWT 토큰 등) 서버 검증을 위해 false를 반환한다.
+// tokenStillValid JWT의 exp 클레임으로 유효 여부를 판단한다. 파싱 실패 시 false.
 func tokenStillValid(token string) bool {
 	payload := decodeJWTClaims(token)
 	if payload == "" {
@@ -322,8 +309,7 @@ func tokenStillValid(token string) bool {
 	return time.Now().Unix() < claims.Exp
 }
 
-// decodeJWTClaims JWT에서 페이로드 부분을 추출해 Base64 디코딩한다.
-// 형식이 아니면 빈 문자열을 반환한다.
+// decodeJWTClaims JWT 페이로드를 Base64 디코딩한다. 형식이 아니면 빈 문자열.
 func decodeJWTClaims(token string) string {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {

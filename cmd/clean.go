@@ -13,8 +13,7 @@ func findCleanCacheFiles(dir string) ([]string, error) {
 	return filepath.Glob(filepath.Join(dir, "note_img_*"))
 }
 
-// cleanCacheFiles 주어진 경로를 삭제하고 삭제한 파일 수와 총 크기를 반환한다.
-// sourceDir가 아닌 위치의 경로와 삭제 실패한 파일은 집계에서 제외한다.
+// cleanCacheFiles 경로를 삭제하고 삭제한 파일 수와 총 크기를 반환한다.
 func cleanCacheFiles(paths []string, sourceDir string) (deleted int, totalSize int64) {
 	for _, path := range paths {
 		if filepath.Dir(path) != sourceDir {

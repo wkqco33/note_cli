@@ -15,8 +15,7 @@ import (
 
 var cleanImport bool
 
-// maxRestoreFileSize 복원 시 ZIP 내부 개별 파일의 최대 크기.
-// 서버 업로드 제한(MAX_UPLOAD_SIZE = 10MB)과 일치시켜 업로드 실패를 사전에 방지한다.
+// maxRestoreFileSize 복원 시 개별 파일 최대 크기 (서버 업로드 제한 10MB와 일치).
 const maxRestoreFileSize = 10 * 1024 * 1024
 
 var importCmd = &cobra.Command{
@@ -195,8 +194,7 @@ var importCmd = &cobra.Command{
 	},
 }
 
-// rebuildBoardsForRestore 백업된 노트의 images URL을 새 업로드 URL로 치환하여
-// 생성 페이로드 슬라이스를 반환. 매핑에 없는 URL은 원본 그대로 유지.
+// rebuildBoardsForRestore 노트의 images URL을 새 업로드 URL로 치환해 생성 페이로드를 반환한다.
 func rebuildBoardsForRestore(boards []api.BoardRead, urlMapping map[string]string) []api.BoardCreate {
 	restored := make([]api.BoardCreate, 0, len(boards))
 	for _, b := range boards {
@@ -228,7 +226,6 @@ func remapImageURLs(images []string, urlMapping map[string]string) []string {
 }
 
 // findBackupEntries ZIP 아카이브에서 notes.json과 files.json 엔트리를 찾는다.
-// 둘 중 하나라도 없으면 nil을 반환할 수 있다.
 func findBackupEntries(files []*zip.File) (notesFile *zip.File, filesFile *zip.File) {
 	for _, f := range files {
 		switch f.Name {

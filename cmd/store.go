@@ -6,8 +6,7 @@ import (
 	"note_cli/api"
 )
 
-// NoteStore 노트와 첨부파일을 저장하고 조회하는 공통 인터페이스.
-// 원격 API와 로컬 SQLite 저장소가 동일한 명령어에서 사용되도록 한다.
+// NoteStore 원격 API와 로컬 SQLite 저장소가 공유하는 공통 인터페이스.
 type NoteStore interface {
 	Close() error
 	GetBoards() ([]api.BoardRead, error)

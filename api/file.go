@@ -12,9 +12,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-// UploadFile multipart/form-data로 서버에 단일 파일을 업로드한다.
-// io.Pipe 스트리밍 본문은 401 재시도가 불가능하므로 업로드 전에 토큰을 사전 검증하고,
-// 실패 시에도 파이프 리더를 닫아 고루틴이 블록되지 않게 보장한다.
+// UploadFile multipart/form-data로 단일 파일을 업로드한다.
 func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 	if err := c.ensureValidToken(); err != nil {
 		return nil, err
@@ -93,9 +91,7 @@ func (c *Client) UploadFile(filePath string) (*FileRead, error) {
 	return &fr, nil
 }
 
-// sanitizeFilename 경로 구분자와 상대 경로 요소를 제거해 순수 파일명만 남긴다.
-// Windows/Unix 경로 구분자를 모두 처리해 path traversal 공격을 방지하고,
-// 안전한 파일명이 남지 않으면 빈 문자열을 반환한다.
+// sanitizeFilename 경로 구분자를 제거해 순수 파일명만 남긴다 (path traversal 방지).
 func sanitizeFilename(filename string) string {
 	normalized := strings.ReplaceAll(filename, "\\", "/")
 	base := filepath.Base(normalized)
@@ -111,8 +107,7 @@ func (c *Client) GetFiles() ([]FileRead, error) {
 	return decodeJSON[[]FileRead](c.get("/files"))
 }
 
-// DownloadFile ID로 파일을 다운로드하여 지정된 디렉토리에 저장
-// 파일이 저장된 절대 경로 반환
+// DownloadFile ID로 파일을 지정된 디렉토리에 다운로드하고 절대 경로를 반환한다.
 func (c *Client) DownloadFile(fileID int, destDir string, filename string) (string, error) {
 	endpoint := fmt.Sprintf("/files/download/%d", fileID)
 
@@ -166,8 +161,7 @@ func (c *Client) DownloadFile(fileID int, destDir string, filename string) (stri
 	return destPath, nil
 }
 
-// DownloadFileTemp ID로 파일을 임시 디렉토리에 조용히 다운로드
-// 반환된 임시 파일 경로는 사용 후 호출자가 직접 삭제해야 함
+// DownloadFileTemp 파일을 임시 디렉토리에 다운로드한다. 반환 경로는 호출자가 삭제해야 한다.
 func (c *Client) DownloadFileTemp(fileID int, ext string) (string, error) {
 	endpoint := fmt.Sprintf("/files/download/%d", fileID)
 

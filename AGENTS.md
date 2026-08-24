@@ -4,7 +4,7 @@
 
 ## 프로젝트 개요
 
-`note_cli`는 원격 API(`https://github.com/wkqco33/tdraw` 백엔드)를 사용하는 빠르고 간단한 터미널 기반 노트 에디터입니다.
+`note_cli`는 로컬 SQLite 또는 원격 API(`https://github.com/wkqco33/tdraw` 백엔드)를 사용하는 빠르고 간단한 터미널 기반 노트 에디터입니다.
 
 - 언어: **Go** (`go.mod`의 `go` 지시문 참고)
 - CLI 프레임워크: `github.com/spf13/cobra`
@@ -18,9 +18,9 @@
 ├── api/    # 백엔드 API 클라이언트 (HTTP 요청, 응답 파싱, 모델)
 ├── cmd/    # cobra 커맨드 정의 + 커맨드 전용 헬퍼/로직
 ├── config/ # 설정 로드/저장, 비밀값 관리
+├── local/  # 로컬 SQLite 노트 저장소
 ├── tui/    # 터미널 UI (편집기 진입 등)
 ├── utils/  # 로거 등 공통 유틸
-├── tdraw/  # git submodule (백엔드 라이브러리) — 직접 수정 금지
 └── main.go # 진입점 (cmd.Execute() 호출)
 ```
 
@@ -84,7 +84,6 @@ task fmt     # go fmt ./...
 
 ## 주의사항
 
-- **tdraw는 git submodule**입니다. 저장소를 새로 복제하면 `git submodule update --init tdraw`가 필요합니다.
 - **`go mod tidy`로 go.mod/go.sum이 불필요하게 변경되는 것을 주의** — 작업에 필요한 변경이 아니면 되돌리세요 (`git checkout -- go.mod go.sum`).
 - CI 워크플로우(`.github/workflows/release.yml`)는 릴리스 시 `go vet` + `go test -race`를 실행합니다. 릴리스 전에 로컬에서 동일하게 검증하세요.
 - 커밋 메시지는 한국어로 간결하게, 변경 내용을 요약합니다.

@@ -142,8 +142,7 @@ func encodeSecretFields(cfg *Config) error {
 	return nil
 }
 
-// decodeSecretFields 저장된 비밀값 복호화. 다른 사용자/컴퓨터에서 복사된 설정 등으로
-// 복호화가 불가능한 필드는 초기화하고 계속 진행한다 (재로그인으로 복구 가능).
+// decodeSecretFields 저장된 비밀값을 복호화한다. 복호화 불가능한 필드는 초기화한다.
 func decodeSecretFields(cfg *Config) {
 	cleared := false
 	for _, value := range secretFields(cfg) {

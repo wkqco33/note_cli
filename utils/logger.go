@@ -10,7 +10,7 @@ import (
 // DebugMode 디버그 로그 출력 여부
 var DebugMode bool
 
-// logLevel 로거 재생성 없이 출력 레벨을 전환하기 위한 동적 레벨 (기본 Info)
+// logLevel 출력 레벨을 동적으로 전환하기 위한 변수
 var logLevel = new(slog.LevelVar)
 
 var logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{

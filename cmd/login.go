@@ -38,8 +38,7 @@ var loginCmd = &cobra.Command{
 			return err
 		}
 
-		// 자동 로그인이 켜져 있으면 로그인 성공 시 계정 정보도 함께 저장
-		// (Login 내부의 config.Save가 토큰과 같이 기록)
+		// 자동 로그인이 켜져 있으면 계정 정보도 함께 저장
 		if client.Config.AutoLogin {
 			client.Config.Username = email
 			client.Config.Password = password

@@ -9,7 +9,6 @@ import (
 )
 
 // resolveEditorCommand EDITOR 환경변수를 실행 커맨드와 인자로 분해한다.
-// 값 전체가 실행 파일 경로면 그대로, 아니면 공백 기준으로 분리한다.
 func resolveEditorCommand() (string, []string) {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {

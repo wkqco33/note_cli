@@ -107,8 +107,7 @@ func uploadAttachedFiles(client NoteStore, paths []string) ([]string, error) {
 	return urls, nil
 }
 
-// resolveBoardID args에 ID가 있으면 파싱하고, 없으면 목록에서 선택하게 한다.
-// ok=false이고 err=nil이면 안내를 이미 출력했으므로 호출자는 정상 종료하면 된다.
+// resolveBoardID ID 인자가 있으면 파싱하고, 없으면 목록에서 선택하게 한다.
 func resolveBoardID(client NoteStore, args []string, prompt, emptyMsg string) (id int, ok bool, err error) {
 	if len(args) == 1 {
 		id, err = parseIDArg(args)
@@ -133,8 +132,7 @@ func resolveBoardID(client NoteStore, args []string, prompt, emptyMsg string) (i
 	return id, true, nil
 }
 
-// resolveFileID 파일 목록에서 선택하게 한다. 선택 후 파일 정보 조회용으로
-// 파일 목록도 함께 반환한다. ok=false, err=nil이면 정상 종료하면 된다.
+// resolveFileID 파일 목록에서 선택하게 하고 파일 목록도 함께 반환한다.
 func resolveFileID(client NoteStore, prompt, emptyMsg string) (id int, files []api.FileRead, ok bool, err error) {
 	files, err = client.GetFiles()
 	if err != nil {
@@ -160,10 +158,7 @@ func resolveFileID(client NoteStore, prompt, emptyMsg string) (id int, files []a
 	return id, files, true, nil
 }
 
-// buildBoardTable 노트 목록을 표 텍스트로 구성한다. (리팩터링 후 printBoardTable가 사용)
-// tabwriter는 문자의 표시 폭이 아닌 룬 수 기준으로 패딩하므로 한글 등
-// 전각 문자가 포함되면 정렬이 깨진다. 대신 runewidth로 표시 폭을 계산해
-// 수동으로 패딩한다.
+// buildBoardTable 노트 목록을 표 텍스트로 구성한다. 한글 정렬을 위해 runewidth로 패딩한다.
 func buildBoardTable(notes []api.BoardRead) string {
 	if len(notes) == 0 {
 		return ""
@@ -203,8 +198,7 @@ func printBoardTable(notes []api.BoardRead) {
 	_, _ = fmt.Fprint(os.Stdout, buildBoardTable(notes))
 }
 
-// padRight 문자열을 표시 폭 기준으로 width칸이 되도록 우측에 공백을 채운다.
-// 전각(한글 등) 문자는 2칸으로 계산하여 tabwriter의 정렬 깨짐을 방지한다.
+// padRight 표시 폭 기준으로 우측에 공백을 채운다 (전각 문자 2칸 계산).
 func padRight(s string, width int) string {
 	pad := width - runewidth.StringWidth(s)
 	if pad <= 0 {
@@ -236,8 +230,7 @@ func validateAttachedFiles(paths []string) error {
 	return nil
 }
 
-// truncateText 표시 폭(전각 문자 2칸) 기준으로 문자열을 자르고 말줄임표를 붙인다.
-// 바이트 단위 슬라이스는 한글 등 멀티바이트 문자를 중간에서 깨뜨리므로 사용하지 않는다.
+// truncateText 표시 폭 기준으로 문자열을 자르고 말줄임표를 붙인다.
 func truncateText(value string, max int) string {
 	if max <= 0 || runewidth.StringWidth(value) <= max {
 		return value

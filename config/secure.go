@@ -22,8 +22,7 @@ func encodeSecret(plain string) (string, error) {
 	return encPrefix + base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-// decodeSecret 저장된 비밀값을 평문으로 복원.
-// 접두사가 없는 값은 과거 평문 저장분으로 보고 그대로 반환한다 (다음 Save 때 암호화됨).
+// decodeSecret 저장된 비밀값을 평문으로 복원한다. 접두사가 없으면 그대로 반환.
 func decodeSecret(stored string) (string, error) {
 	if stored == "" || !strings.HasPrefix(stored, encPrefix) {
 		return stored, nil

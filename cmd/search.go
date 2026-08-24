@@ -102,8 +102,7 @@ func buildURLToFilename(files []api.FileRead) map[string]string {
 	return m
 }
 
-// filterBoards 제목/내용/첨부파일명 조건으로 노트를 필터링.
-// 빈 조건은 해당 조건을 무시(모두 매칭)한다. 검색어는 대소문자 구분 없이 부분 일치.
+// filterBoards 제목/내용/첨부파일명 조건으로 노트를 필터링한다. 빈 조건은 무시.
 func filterBoards(notes []api.BoardRead, files []api.FileRead, titleQuery, contentQuery, fileQuery string) []api.BoardRead {
 	if titleQuery == "" && contentQuery == "" && fileQuery == "" {
 		return append([]api.BoardRead(nil), notes...)

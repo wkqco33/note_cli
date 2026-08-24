@@ -39,23 +39,16 @@
 ## 설치
 
 ```bash
-# 저장소 클론 (서브모듈 포함)
-git clone --recurse-submodules https://github.com/wkqco33/note_cli.git
+# 저장소 클론
+git clone https://github.com/wkqco33/note_cli.git
 cd note_cli
-
-# 이미 클론한 경우 서브모듈 초기화
-git submodule update --init --recursive
 
 # 빌드 (./ncli 바이너리 생성)
 task build
 
-# 또는 Go bin 경로에 설치 (~/.go/bin 또는 $GOPATH/bin)
+# 또는 /usr/local/bin에 설치
 task install
 ```
-
-> **참고**: `view` 명령의 터미널 이미지 렌더링 기능은 [tdraw](https://github.com/wkqco33/tdraw) 서브모듈에
-> 의존합니다. 서브모듈 없이 빌드하면 `go build`가 실패하므로 반드시 `--recurse-submodules`로
-> 클론하거나 `git submodule update --init --recursive`를 실행하세요.
 
 ---
 
@@ -206,40 +199,25 @@ export EDITOR=nano
 앱을 처음 실행하거나 로그인하면 `~/.config/note_cli/config.yaml` 파일이 자동으로 생성됩니다.
 
 ```yaml
+mode: local
 host: 127.0.0.1
 port: 8880
 access_token: "enc:..."
 refresh_token: "enc:..."
+auto_login: false
+username: "user@example.com"
+password: "enc:..."
 ```
 
 > **보안 참고**: 액세스 토큰, 리프레시 토큰, 자동 로그인 비밀번호는 평문이 아니라 **`enc:` 접두사와 함께 플랫폼별 암호화**되어 저장됩니다 (Windows는 DPAPI, 그 외는 AES-256-GCM). 설정 파일 권한은 `0600`으로 생성됩니다. 보안 취약점 신고는 [SECURITY.md](./SECURITY.md)를 참고하세요.
 
+- **mode**: 저장 모드 (`local` 또는 `remote`, 기본값 `local`)
 - **host / port**: API 서버 주소를 변경할 때 수정합니다. 기본값은 `127.0.0.1` 및 `8880` 입니다.
+- **auto_login**: 켜면 로그인 시 계정 정보를 저장해 인증 만료 시 자동 재로그인합니다.
 - **액세스 토큰**: 유효 기간 30분, 만료 시 자동 재발급
 - **리프레시 토큰**: 유효 기간 7일
 
 저장소의 `config.yaml.example` 파일을 참고하여 설정 파일을 직접 생성할 수도 있습니다.
-
-### API 키 / 시크릿 키
-
-릴리스 바이너리는 API 키와 시크릿 키가 **빌드 시점에 내장**되도록 빌드할 수 있습니다.  
-그래서 GitHub Actions에서 생성한 바이너리는 별도 `.env` 없이 바로 실행할 수 있습니다.
-
-로컬 개발이나 별도 빌드에서는 저장소 루트의 `.env` 파일 또는 셸 환경변수를 사용할 수 있습니다.
-
-```bash
-cp .env.example .env
-```
-
-`.env` 또는 셸 환경에 아래 값을 설정하세요.
-
-```bash
-NOTE_CLI_API_KEY="..."
-NOTE_CLI_SECRET_KEY="..."
-```
-
-빌드 시점에 값이 주입되면 실행 시 `.env`는 필요 없습니다.  
-실행 시 환경변수가 있으면 빌드타임 내장값보다 **우선 적용**되므로, 운영 환경이나 테스트 환경에서 override 용도로 사용할 수 있습니다.
 
 ---
 
@@ -249,16 +227,16 @@ NOTE_CLI_SECRET_KEY="..."
 
 이 저장소는 [Taskfile](https://taskfile.dev) 기반으로 빌드/테스트 자동화를 제공합니다. `task` 명령이 필요합니다 (`go install github.com/go-task/task/v3/cmd/task@latest`).
 
-| 명령어 | 설명 |
-| - | - |
-| `task build` | `./ncli` 바이너리 빌드 |
-| `task install` | Go bin 경로에 설치 |
-| `task uninstall` | Go bin 경로에서 제거 |
-| `task run` | 빌드 후 실행 (도움말 표시) |
-| `task test` | 단위 테스트 실행 |
-| `task fmt` | 코드 포맷팅 |
-| `task clean` | 빌드 결과물 삭제 |
-| `task help` | 사용 가능한 명령어 목록 표시 |
+| 명령어           | 설명                         |
+| ---------------- | ---------------------------- |
+| `task build`     | `./ncli` 바이너리 빌드       |
+| `task install`   | /usr/local/bin에 설치        |
+| `task uninstall` | /usr/local/bin에서 제거      |
+| `task run`       | 빌드 후 실행 (도움말 표시)   |
+| `task test`      | 단위 테스트 실행             |
+| `task fmt`       | 코드 포맷팅                  |
+| `task clean`     | 빌드 결과물 삭제             |
+| `task help`      | 사용 가능한 명령어 목록 표시 |
 
 ### 테스트 실행
 
@@ -278,9 +256,9 @@ note_cli/
 ├── go.mod                        # Go 모듈 정의
 ├── Taskfile.yml                  # 빌드/테스트 자동화 (task)
 ├── CLIENT_API_GUIDE.md           # API 명세서 (한국어)
-├── .github/workflows/release.yml # 태그 기반 크로스플랫폼 릴리스
+├── .github/workflows/            # CI 및 태그 기반 크로스플랫폼 릴리스
 ├── api/
-│   ├── client.go                 # HTTP 클라이언트 (자동 토큰 갱신, 타임아웃, 시크릿 캐싱)
+│   ├── client.go                 # HTTP 클라이언트 (자동 토큰 갱신, 타임아웃)
 │   ├── auth.go                   # 인증 관련 API 호출
 │   ├── board.go                  # 노트 CRUD API 호출
 │   ├── file.go                   # 파일 업로드/다운로드/삭제 (스트리밍)
@@ -289,7 +267,8 @@ note_cli/
 │   ├── api_test.go               # 모델 직렬화 단위 테스트
 │   └── client_test.go            # 401 재시도/스트림/본문 재전송 단위 테스트
 ├── cmd/
-│   ├── root.go                   # 루트 명령어 (Cobra, RunE 전파)
+│   ├── root.go                   # 루트 명령어 (Cobra)
+│   ├── store.go                  # 원격/로컬 공통 NoteStore 인터페이스
 │   ├── helpers.go                # 검증/포맷/TUI 선택 공용 헬퍼
 │   ├── register.go               # register 명령어
 │   ├── login.go                  # login 명령어
@@ -305,43 +284,38 @@ note_cli/
 │   ├── config.go                 # config 명령어 (설정 조회/수정)
 │   ├── clean.go                  # 임시 캐시 정리 명령어
 │   ├── version.go                # version 명령어
-│   ├── helpers_test.go           # 헬퍼 단위 테스트
-│   ├── search_test.go            # 검색 필터링 단위 테스트
-│   ├── export_test.go            # 백업 직렬화 단위 테스트
-│   ├── import_test.go            # 복원 매핑/아카이브 탐색 단위 테스트
-│   ├── clean_test.go             # 캐시 정리 단위 테스트
-│   ├── config_test.go            # 설정 적용 단위 테스트
-│   └── delete_test.go            # 삭제 대상 매핑 단위 테스트
+│   └── *_test.go                 # 커맨드 단위 테스트
 ├── config/
 │   ├── config.go                 # 설정 파일 로드/저장 (~/.config/note_cli/config.yaml)
-│   ├── secrets.go                # 런타임 시크릿 해석 (env > .env > 빌드타임 내장)
 │   ├── secure.go                 # 비밀값 암호화/복호화 (플랫폼별 위임)
 │   ├── secure_fallback.go        # 비 Windows AES-256-GCM 암호화
 │   ├── secure_windows.go         # Windows DPAPI 암호화
-│   ├── secrets_test.go           # 시크릿 해석 단위 테스트
+│   ├── config_test.go            # 설정 단위 테스트
 │   └── buildinfo/                # ldflags 주입용 빌드 정보
+├── local/
+│   ├── store.go                  # 로컬 SQLite 노트 저장소
+│   └── store_test.go             # 로컬 저장소 단위 테스트
 ├── tui/
 │   └── editor.go                 # 외부 편집기 연동
-├── utils/
-│   └── logger.go                 # slog 기반 디버그 로거
-└── tdraw/                        # 터미널 이미지 렌더링 (git submodule)
+└── utils/
+    └── logger.go                 # slog 기반 디버그 로거
 ```
 
 ---
 
 ## 주요 의존성
 
-| 패키지 | 용도 |
-| - | - |
-| [cobra](https://github.com/spf13/cobra) | CLI 명령어 프레임워크 |
-| [huh](https://github.com/charmbracelet/huh) | 인터랙티브 TUI 폼 |
-| [lipgloss](https://github.com/charmbracelet/lipgloss) | 터미널 스타일링 |
-| [glamour](https://github.com/charmbracelet/glamour) | Markdown 렌더링 |
-| [progressbar/v3](https://github.com/schollz/progressbar) | 업로드/다운로드 진행률 바 |
-| [humanize](https://github.com/dustin/go-humanize) | 바이트 단위 사람 친화적 표현 |
-| [godotenv](https://github.com/joho/godotenv) | `.env` 파일 로드 |
-| [yaml.v3](https://github.com/go-yaml/yaml) | 설정 파일 직렬화 |
-| [tdraw](https://github.com/wkqco33/tdraw) | 터미널 이미지 렌더링 (submodule) |
+| 패키지                                                   | 용도                         |
+| -------------------------------------------------------- | ---------------------------- |
+| [cobra](https://github.com/spf13/cobra)                  | CLI 명령어 프레임워크        |
+| [huh](https://github.com/charmbracelet/huh)              | 인터랙티브 TUI 폼            |
+| [lipgloss](https://github.com/charmbracelet/lipgloss)    | 터미널 스타일링              |
+| [glamour](https://github.com/charmbracelet/glamour)      | Markdown 렌더링              |
+| [progressbar/v3](https://github.com/schollz/progressbar) | 업로드/다운로드 진행률 바    |
+| [humanize](https://github.com/dustin/go-humanize)        | 바이트 단위 사람 친화적 표현 |
+| [yaml.v3](https://github.com/go-yaml/yaml)               | 설정 파일 직렬화             |
+| [modernc.org/sqlite](https://modernc.org/sqlite)         | 로컬 SQLite 데이터베이스     |
+| [tdraw](https://github.com/wkqco33/tdraw)                | 터미널 이미지 렌더링         |
 
 ---
 
