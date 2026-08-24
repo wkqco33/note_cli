@@ -10,7 +10,6 @@ import (
 	"note_cli/config"
 	"note_cli/utils"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -35,10 +34,6 @@ type Client struct {
 	// StreamClient 대용량 업로드/다운로드용 (본문 전송 시간 무제한)
 	StreamClient *http.Client
 	Config       *config.Config
-
-	secretsOnce sync.Once
-	secrets     config.RuntimeSecrets
-	secretsErr  error
 
 	// autoLoggingIn 자동 로그인 진행 중 여부 (재귀 자동 로그인 방지)
 	autoLoggingIn bool
@@ -201,17 +196,8 @@ func (c *Client) sendRequest(req *http.Request, retryOn401 bool, stream bool) (*
 }
 
 func (c *Client) applyAuthHeaders(req *http.Request) error {
-	// 시크릿은 프로세스 수명 동안 불변하므로 최초 1회만 로드하여 캐싱.
-	// 매 요청마다 .env 디스크 읽기를 반복하지 않도록 sync.Once로 보호.
-	c.secretsOnce.Do(func() {
-		c.secrets, c.secretsErr = config.LoadRuntimeSecrets()
-	})
-	if c.secretsErr != nil {
-		return c.secretsErr
-	}
-
-	req.Header.Set("Secret-Key", c.secrets.SecretKey)
-	req.Header.Set("Api-Key", c.secrets.APIKey)
+	// 인증은 로그인/리프레시로 발급된 JWT(AccessToken)만 사용한다.
+	// (보안: 서버 측 API-Key 헤더 검증을 제거하고 JWT로 전환)
 	if c.Config.AccessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Config.AccessToken)
 	}
@@ -276,13 +262,13 @@ func parseAPIError(statusCode int, body []byte) error {
 
 	var envelope apiErrorEnvelope
 	if err := json.Unmarshal(body, &envelope); err == nil && envelope.Error.Message != "" {
-		if msg := friendlyAuthMessage(statusCode, envelope.Error.Message); msg != "" {
+		if msg := friendlyAuthMessage(statusCode); msg != "" {
 			return &APIError{Detail: msg}
 		}
 		return &APIError{Detail: envelope.Error.Message}
 	}
 
-	if msg := friendlyAuthMessage(statusCode, string(body)); msg != "" {
+	if msg := friendlyAuthMessage(statusCode); msg != "" {
 		return &APIError{Detail: msg}
 	}
 
@@ -291,25 +277,15 @@ func parseAPIError(statusCode int, body []byte) error {
 
 // friendlyAuthMessage 인증 관련 HTTP 상태 코드를 사용자 안내 문구로 변환.
 // 인증 오류가 아니면 빈 문자열을 반환해 서버 메시지를 그대로 노출한다.
-func friendlyAuthMessage(statusCode int, serverMessage string) string {
+func friendlyAuthMessage(statusCode int) string {
 	switch statusCode {
 	case http.StatusUnauthorized:
-		if isAPIKeyError(serverMessage) {
-			return "API 인증 키가 유효하지 않거나 만료되었습니다. NOTE_CLI_API_KEY / NOTE_CLI_SECRET_KEY 설정을 확인하거나 최신 버전으로 업데이트하세요"
-		}
 		return "로그인이 만료되었거나 인증에 실패했습니다. 'login' 명령으로 다시 로그인하세요"
 	case http.StatusForbidden:
 		return "이 작업을 수행할 권한이 없습니다"
 	}
 
 	return ""
-}
-
-// isAPIKeyError Secret-Key/Api-Key 헤더 문제(키 누락·만료)인지 서버 메시지로 판별
-func isAPIKeyError(message string) bool {
-	lower := strings.ToLower(message)
-	return strings.Contains(lower, "secret-key") || strings.Contains(lower, "secret key") ||
-		strings.Contains(lower, "api-key") || strings.Contains(lower, "api key")
 }
 
 func (c *Client) logRequest(req *http.Request, stream bool) {

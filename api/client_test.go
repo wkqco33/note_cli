@@ -172,10 +172,10 @@ func TestParseAPIErrorFriendlyMessages(t *testing.T) {
 		want       string
 	}{
 		{
-			name:       "secret key envelope error",
+			name:       "auth envelope error",
 			statusCode: http.StatusUnauthorized,
-			body:       `{"error":{"code":"AUTH_ERROR","message":"Secret-Key header invalid or missing","details":{"header":"Secret-Key"}}}`,
-			want:       "API 인증 키가 유효하지 않거나 만료되었습니다. NOTE_CLI_API_KEY / NOTE_CLI_SECRET_KEY 설정을 확인하거나 최신 버전으로 업데이트하세요",
+			body:       `{"error":{"code":"AUTH_ERROR","message":"API-Key header invalid or missing","details":{"header":"API-Key"}}}`,
+			want:       "로그인이 만료되었거나 인증에 실패했습니다. 'login' 명령으로 다시 로그인하세요",
 		},
 		{
 			name:       "expired token envelope error",
