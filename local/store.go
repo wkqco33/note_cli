@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"note_cli/api"
+	"note_cli/embedding"
 
 	_ "modernc.org/sqlite"
 )
@@ -35,6 +36,15 @@ CREATE TABLE IF NOT EXISTS files (
     content_type TEXT NOT NULL,
     local_path TEXT NOT NULL,
     created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS note_embeddings (
+    note_id INTEGER PRIMARY KEY,
+    model TEXT NOT NULL,
+    dimensions INTEGER NOT NULL,
+    vector BLOB NOT NULL,
+    content_hash TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 `
 
@@ -144,6 +154,46 @@ func (s *Store) GetBoard(id int) (*api.BoardRead, error) {
 		return nil, err
 	}
 	return &board, nil
+}
+
+// SaveEmbedding 노트의 최신 임베딩을 저장한다.
+func (s *Store) SaveEmbedding(record embedding.Record) error {
+	_, err := s.db.Exec(`
+		INSERT INTO note_embeddings (note_id, model, dimensions, vector, content_hash, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(note_id) DO UPDATE SET model = excluded.model, dimensions = excluded.dimensions,
+		vector = excluded.vector, content_hash = excluded.content_hash, updated_at = excluded.updated_at`,
+		record.NoteID, record.Model, record.Dimensions, embedding.Encode(record.Vector), record.ContentHash, record.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("노트 임베딩을 저장하지 못했습니다: %w", err)
+	}
+	return nil
+}
+
+// GetEmbeddings 저장된 모든 임베딩을 반환한다.
+func (s *Store) GetEmbeddings() ([]embedding.Record, error) {
+	rows, err := s.db.Query(`SELECT note_id, model, dimensions, vector, content_hash, updated_at FROM note_embeddings`)
+	if err != nil {
+		return nil, fmt.Errorf("노트 임베딩을 조회하지 못했습니다: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var records []embedding.Record
+	for rows.Next() {
+		var record embedding.Record
+		var data []byte
+		if err := rows.Scan(&record.NoteID, &record.Model, &record.Dimensions, &data, &record.ContentHash, &record.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("노트 임베딩을 읽지 못했습니다: %w", err)
+		}
+		record.Vector, err = embedding.Decode(data)
+		if err != nil {
+			return nil, fmt.Errorf("노트 임베딩을 복원하지 못했습니다: %w", err)
+		}
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("노트 임베딩 목록을 읽지 못했습니다: %w", err)
+	}
+	return records, nil
 }
 
 // UpdateBoard 지정된 필드만 노트를 수정한다.

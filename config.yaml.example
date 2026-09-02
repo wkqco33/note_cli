@@ -10,3 +10,12 @@ port: 8880        # API 서버 포트 (기본값: 8880)
 # 아래 값들은 login 명령어 실행 시 자동으로 갱신됩니다. 수동으로 변경할 필요가 없습니다.
 # access_token: "your_access_token_here"
 # refresh_token: "your_refresh_token_here"
+
+# LLM 설정 (기본값은 로컬 Ollama)
+llm:
+  provider: ollama # ollama 또는 openai
+  model: llama3.2
+  base_url: "http://127.0.0.1:11434/v1"
+  embedding_model: nomic-embed-text
+  # OpenAI 사용 시에만 필요하며 config set llm.api_key로 설정하세요.
+  # api_key: "enc:..."

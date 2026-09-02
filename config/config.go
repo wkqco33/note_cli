@@ -9,14 +9,25 @@ import (
 )
 
 type Config struct {
-	Mode         string `yaml:"mode,omitempty"`
-	Host         string `yaml:"host"`
-	Port         int    `yaml:"port"`
-	AccessToken  string `yaml:"access_token,omitempty"`
-	RefreshToken string `yaml:"refresh_token,omitempty"`
-	AutoLogin    bool   `yaml:"auto_login,omitempty"`
-	Username     string `yaml:"username,omitempty"`
-	Password     string `yaml:"password,omitempty"`
+	Mode         string    `yaml:"mode,omitempty"`
+	Host         string    `yaml:"host"`
+	Port         int       `yaml:"port"`
+	AccessToken  string    `yaml:"access_token,omitempty"`
+	RefreshToken string    `yaml:"refresh_token,omitempty"`
+	AutoLogin    bool      `yaml:"auto_login,omitempty"`
+	Username     string    `yaml:"username,omitempty"`
+	Password     string    `yaml:"password,omitempty"`
+	LLM          LLMConfig `yaml:"llm,omitempty"`
+}
+
+// LLMConfig LLM 제공자 연결 설정.
+type LLMConfig struct {
+	Provider       string `yaml:"provider,omitempty"`
+	Model          string `yaml:"model,omitempty"`
+	BaseURL        string `yaml:"base_url,omitempty"`
+	APIKey         string `yaml:"api_key,omitempty"`
+	EmbeddingModel string `yaml:"embedding_model,omitempty"`
+	TimeoutSeconds int    `yaml:"timeout_seconds,omitempty"`
 }
 
 func getConfigPath() (string, error) {
@@ -53,6 +64,7 @@ func Load() (*Config, error) {
 				Mode: "local",
 				Host: "127.0.0.1",
 				Port: 8880,
+				LLM:  defaultLLMConfig(),
 			}
 			if saveErr := Save(defaultCfg); saveErr != nil {
 				return nil, saveErr
@@ -83,8 +95,38 @@ func Load() (*Config, error) {
 	if cfg.Port == 0 {
 		cfg.Port = 8880
 	}
+	applyLLMDefaults(&cfg.LLM)
 
 	return &cfg, nil
+}
+
+func defaultLLMConfig() LLMConfig {
+	return LLMConfig{
+		Provider:       "ollama",
+		Model:          "llama3.2",
+		BaseURL:        "http://127.0.0.1:11434/v1",
+		EmbeddingModel: "nomic-embed-text",
+		TimeoutSeconds: 120,
+	}
+}
+
+func applyLLMDefaults(cfg *LLMConfig) {
+	defaults := defaultLLMConfig()
+	if cfg.Provider == "" {
+		cfg.Provider = defaults.Provider
+	}
+	if cfg.Model == "" {
+		cfg.Model = defaults.Model
+	}
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = defaults.BaseURL
+	}
+	if cfg.EmbeddingModel == "" {
+		cfg.EmbeddingModel = defaults.EmbeddingModel
+	}
+	if cfg.TimeoutSeconds == 0 {
+		cfg.TimeoutSeconds = defaults.TimeoutSeconds
+	}
 }
 
 // DatabasePath 로컬 모드에서 사용하는 SQLite 데이터베이스 경로를 반환한다.
@@ -127,6 +169,7 @@ func secretFields(cfg *Config) map[string]*string {
 		"access_token":  &cfg.AccessToken,
 		"refresh_token": &cfg.RefreshToken,
 		"password":      &cfg.Password,
+		"llm.api_key":   &cfg.LLM.APIKey,
 	}
 }
 

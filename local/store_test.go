@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"note_cli/api"
+	"note_cli/embedding"
 )
 
 func TestStoreBoardCRUD(t *testing.T) {
@@ -65,6 +66,27 @@ func TestStoreBoardCRUD(t *testing.T) {
 	}
 	if len(boards) != 0 {
 		t.Fatalf("GetBoards() after delete = %#v", boards)
+	}
+}
+
+func TestStoreEmbeddingRoundTrip(t *testing.T) {
+	store, err := Open(filepath.Join(t.TempDir(), "notes.db"))
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = store.Close() }()
+	if err := store.SaveEmbedding(embedding.Record{NoteID: 7, Model: "test", Dimensions: 2, Vector: []float32{0.1, 0.2}, ContentHash: "hash", UpdatedAt: "now"}); err != nil {
+		t.Fatalf("SaveEmbedding() error = %v", err)
+	}
+	if err := store.SaveEmbedding(embedding.Record{NoteID: 7, Model: "test-v2", Dimensions: 2, Vector: []float32{0.3, 0.4}, ContentHash: "hash2", UpdatedAt: "later"}); err != nil {
+		t.Fatalf("SaveEmbedding() update error = %v", err)
+	}
+	records, err := store.GetEmbeddings()
+	if err != nil {
+		t.Fatalf("GetEmbeddings() error = %v", err)
+	}
+	if len(records) != 1 || records[0].Model != "test-v2" || records[0].Vector[1] != 0.4 {
+		t.Fatalf("GetEmbeddings() = %#v", records)
 	}
 }
 

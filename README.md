@@ -18,11 +18,12 @@
 - **카테고리 분류**: Work / Personal / Idea / Other
 - **외부 에디터 지원**: `$EDITOR` 환경변수에 설정된 편집기로 노트 내용 작성 (기본값: `vim`)
 - **인터랙티브 UI**: [Charmbracelet](https://charm.sh) 라이브러리 기반의 TUI 폼 및 프로그래스 바(Progress Bar) 지원
-- **강력한 검색**: 노트 제목, 내용, 첨부파일 이름 기반 통합 검색 기능
+- **강력한 검색**: 노트 제목, 내용, 첨부파일 이름 기반 통합 검색 및 로컬 임베딩 기반 자연어 검색
 - **대용량 파일 지원**: 스트리밍 전송 기반으로 최대 500MB까지 파일 업로드/다운로드 지원
 - **JWT 인증**: 액세스 토큰 만료 시 자동 재발급
 - **저장 모드 선택**: 로컬 SQLite 또는 원격 API 사용
 - **주문형 로컬 설정**: `~/.config/note_cli/config.yaml`에 저장 모드, 호스트/포트 및 인증 토큰 저장
+- **LLM 노트 보조**: 노트 개선안, 할 일 목록, 텍스트 첨부파일 요약 (Ollama / OpenAI)
 
 ---
 
@@ -164,6 +165,55 @@ ncli search [flags]
 - `download`: 노트의 첨부파일을 다운로드합니다. 파일 전송에는 진행률 표시줄(Progress bar)이 제공되며, ID 생략 시 전체 파일 목록을 TUI 기반으로 탐색하여 다운로드할 수 있습니다. 원본 파일명으로 저장됩니다.
 - `search`: `--title (제목)`, `--content (내용)`, `--file (첨부파일명)` 플래그를 조합하여 노트를 빠르게 검색할 수 있습니다. 아무 플래그도 입력하지 않으면 대화형(TUI) 방식으로 검색 조건을 선택할 수 있습니다.
 
+#### LLM 기능
+
+LLM 기능은 기본적으로 로컬 Ollama를 사용합니다. Ollama를 실행하고 모델을 준비한 뒤 사용할 수 있습니다.
+
+```bash
+ollama serve
+ollama pull llama3.2
+ncli ai status
+```
+
+노트 개선안은 기본적으로 출력만 하며, `--apply`를 지정해야 저장합니다.
+
+```bash
+ncli ai improve 12
+ncli ai improve
+ncli ai improve 12 --apply
+```
+
+노트에서 명시된 할 일을 추출할 수 있습니다. `--create-note`를 지정하면 결과를 새 `Other` 카테고리 노트로 저장합니다.
+
+```bash
+ncli ai todos 12
+ncli ai todos
+ncli ai todos 12 --create-note
+ncli ai summarize-file 3
+ncli ai summarize-file
+```
+
+`ai improve`, `ai todos`, `ai summarize-file`은 ID를 생략하면 TUI에서 대상 노트 또는 첨부파일을 선택합니다. ID를 직접 지정할 수도 있습니다. `summarize-file`은 첨부파일 ID를 사용합니다. 현재 텍스트 기반 파일(`txt`, `md`, `csv`, `json`, `log`)을 지원하며, 분석 대상 파일은 2MB 이하입니다.
+
+로컬 노트는 임베딩 인덱스를 생성한 뒤 자연어 검색을 사용할 수 있습니다.
+
+```bash
+ncli ai index
+ncli ai index 12
+ncli ai search "지난 회의에서 API 일정이 어떻게 결정됐지"
+```
+
+`ai index`는 전체 노트를 인덱싱하고, ID를 지정하면 해당 노트만 인덱싱합니다. 노트 본문이 변경되거나 임베딩 모델을 바꾸면 해당 노트만 다시 인덱싱됩니다. 임베딩 인덱싱과 자연어 검색은 현재 로컬 SQLite 모드에서 지원합니다.
+
+OpenAI를 사용하려면 다음과 같이 설정합니다. API 키는 기존 설정의 비밀값 저장 방식으로 암호화됩니다.
+
+```bash
+ncli config set llm.provider openai
+ncli config set llm.model gpt-4o-mini
+ncli config set llm.base_url https://api.openai.com/v1
+ncli config set llm.api_key sk-...
+```
+
 #### 노트 및 첨부파일 삭제
 
 ```bash
@@ -207,6 +257,14 @@ refresh_token: "enc:..."
 auto_login: false
 username: "user@example.com"
 password: "enc:..."
+llm:
+  provider: ollama
+  model: llama3.2
+  base_url: "http://127.0.0.1:11434/v1"
+  embedding_model: nomic-embed-text
+  timeout_seconds: 120
+  # OpenAI 사용 시 설정. 실제 저장 시 enc: 형식으로 암호화됩니다.
+  api_key: "enc:..."
 ```
 
 > **보안 참고**: 액세스 토큰, 리프레시 토큰, 자동 로그인 비밀번호는 평문이 아니라 **`enc:` 접두사와 함께 플랫폼별 암호화**되어 저장됩니다 (Windows는 DPAPI, 그 외는 AES-256-GCM). 설정 파일 권한은 `0600`으로 생성됩니다. 보안 취약점 신고는 [SECURITY.md](./SECURITY.md)를 참고하세요.
@@ -216,6 +274,24 @@ password: "enc:..."
 - **auto_login**: 켜면 로그인 시 계정 정보를 저장해 인증 만료 시 자동 재로그인합니다.
 - **액세스 토큰**: 유효 기간 30분, 만료 시 자동 재발급
 - **리프레시 토큰**: 유효 기간 7일
+- **llm.provider**: LLM 제공자 (`ollama` 또는 `openai`, 기본값 `ollama`)
+- **llm.model**: 요약·개선·할 일 추출에 사용할 모델 (기본값 `llama3.2`)
+- **llm.base_url**: OpenAI 호환 API 주소 (기본값 `http://127.0.0.1:11434/v1`)
+- **llm.embedding_model**: 자연어 검색용 임베딩 모델 (기본값 `nomic-embed-text`)
+- **llm.timeout_seconds**: LLM 요청 제한 시간 (기본값 120초)
+- **llm.api_key**: OpenAI API 키. 설정 파일에는 암호화되어 저장됩니다.
+
+LLM 관련 설정은 다음 명령으로 수정할 수 있습니다.
+
+```bash
+ncli config set llm.provider ollama
+ncli config set llm.model llama3.2
+ncli config set llm.base_url http://127.0.0.1:11434/v1
+ncli config set llm.embedding_model nomic-embed-text
+ncli config set llm.api_key sk-...
+```
+
+`llm.api_key`는 OpenAI를 사용할 때만 필요합니다. Ollama는 로컬 서버를 사용하므로 API 키가 필요하지 않습니다.
 
 저장소의 `config.yaml.example` 파일을 참고하여 설정 파일을 직접 생성할 수도 있습니다.
 

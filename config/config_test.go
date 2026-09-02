@@ -168,6 +168,32 @@ func TestLoadDefaultsNewConfigToLocalMode(t *testing.T) {
 	if cfg.Mode != "local" {
 		t.Fatalf("default mode = %q, want local", cfg.Mode)
 	}
+	if cfg.LLM.Provider != "ollama" || cfg.LLM.Model == "" || cfg.LLM.BaseURL == "" {
+		t.Fatalf("unexpected LLM defaults: %+v", cfg.LLM)
+	}
+}
+
+func TestSaveEncryptsLLMAPIKey(t *testing.T) {
+	setTestHome(t)
+	cfg := &Config{Mode: "local", Host: "127.0.0.1", Port: 8880, LLM: LLMConfig{APIKey: "plain-api-key"}}
+	if err := Save(cfg); err != nil {
+		t.Fatalf("failed to save config: %v", err)
+	}
+	path, err := Path()
+	if err != nil {
+		t.Fatalf("failed to get config path: %v", err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read config file: %v", err)
+	}
+	if strings.Contains(string(raw), "plain-api-key") || !strings.Contains(string(raw), "api_key: enc:") {
+		t.Fatalf("LLM API key was not encrypted: %s", raw)
+	}
+	loaded, err := Load()
+	if err != nil || loaded.LLM.APIKey != "plain-api-key" {
+		t.Fatalf("LLM API key round trip = %q, error = %v", loaded.LLM.APIKey, err)
+	}
 }
 
 func TestLoadLegacyConfigDefaultsToRemoteMode(t *testing.T) {

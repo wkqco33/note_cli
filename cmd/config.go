@@ -48,6 +48,10 @@ var configCmd = &wcli.Command{
 			_, _ = fmt.Fprintf(w, "계정\t%s\n", cfg.Username)
 		}
 		_, _ = fmt.Fprintf(w, "로그인\t%s\n", loginStatus)
+		_, _ = fmt.Fprintf(w, "llm.provider\t%s\n", cfg.LLM.Provider)
+		_, _ = fmt.Fprintf(w, "llm.model\t%s\n", cfg.LLM.Model)
+		_, _ = fmt.Fprintf(w, "llm.base_url\t%s\n", cfg.LLM.BaseURL)
+		_, _ = fmt.Fprintf(w, "llm.embedding_model\t%s\n", cfg.LLM.EmbeddingModel)
 		_, _ = fmt.Fprintf(w, "설정 파일\t%s\n", path)
 		_ = w.Flush()
 		return nil
@@ -56,7 +60,7 @@ var configCmd = &wcli.Command{
 
 var configSetCmd = &wcli.Command{
 	Use:   "set <key> <value>",
-	Short: "설정 값 수정 (mode, host, port, auto_login)",
+	Short: "설정 값 수정 (mode, host, port, auto_login, llm.*)",
 	Run: func(ctx *wcli.Context) error {
 		if err := requireExactArgs(ctx.Args, 2); err != nil {
 			return err
@@ -121,8 +125,30 @@ func applyConfigValue(cfg *config.Config, key, value string) error {
 		return fmt.Errorf("토큰은 직접 수정할 수 없습니다. '%s login'을 사용하세요", binaryName())
 	case "username", "password":
 		return fmt.Errorf("계정 정보는 직접 수정할 수 없습니다. auto_login을 켠 뒤 '%s login'을 사용하세요", binaryName())
+	case "llm.provider":
+		if value != "ollama" && value != "openai" {
+			return fmt.Errorf("llm.provider는 ollama 또는 openai여야 합니다")
+		}
+		cfg.LLM.Provider = value
+	case "llm.model":
+		if value == "" {
+			return fmt.Errorf("llm.model 값은 비워둘 수 없습니다")
+		}
+		cfg.LLM.Model = value
+	case "llm.base_url":
+		if value == "" {
+			return fmt.Errorf("llm.base_url 값은 비워둘 수 없습니다")
+		}
+		cfg.LLM.BaseURL = value
+	case "llm.embedding_model":
+		if value == "" {
+			return fmt.Errorf("llm.embedding_model 값은 비워둘 수 없습니다")
+		}
+		cfg.LLM.EmbeddingModel = value
+	case "llm.api_key":
+		cfg.LLM.APIKey = value
 	default:
-		return fmt.Errorf("알 수 없는 설정 키입니다: %s (사용 가능: mode, host, port, auto_login)", key)
+		return fmt.Errorf("알 수 없는 설정 키입니다: %s (사용 가능: mode, host, port, auto_login, llm.provider, llm.model, llm.base_url, llm.embedding_model, llm.api_key)", key)
 	}
 
 	return nil

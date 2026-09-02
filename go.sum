@@ -107,6 +107,8 @@ github.com/schollz/progressbar/v3 v3.19.0 h1:Ea18xuIRQXLAUidVDox3AbwfUhD0/1Ivohy
 github.com/schollz/progressbar/v3 v3.19.0/go.mod h1:IsO3lpbaGuzh8zIMzgY3+J8l4C8GjO0Y9S69eFvNsec=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+github.com/wkqco33/LLM_client_go v0.1.0 h1:oYw6sSe5yinBu+FtSQw2TJ6wW8XSqDA516L4ikSmyEc=
+github.com/wkqco33/LLM_client_go v0.1.0/go.mod h1:Se3UP/dQmR0JKLuTeO4WAeo8Kw8hT9QxdT9JR1uRSTU=
 github.com/wkqco33/tdraw v0.1.5 h1:hLu/eTTTCbJgnDtjdd57trNBON9LjrUsgv33e3GT0dk=
 github.com/wkqco33/tdraw v0.1.5/go.mod h1:pCBmsAyeArQ4XNruxizRE4ID1UsdTz1MM6I7mXHpXc4=
 github.com/wkqco33/wcli v0.2.0 h1:f4hbJ8XtNTDXLInnftAaKeJwmWu5VaTa5QxSmrKbGUY=
