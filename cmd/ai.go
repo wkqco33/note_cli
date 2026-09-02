@@ -12,6 +12,7 @@ import (
 	"note_cli/attachments"
 	"note_cli/embedding"
 	appLLM "note_cli/llm"
+	"note_cli/utils"
 
 	llmapi "github.com/wkqco33/LLM_client_go"
 	"github.com/wkqco33/wcli"
@@ -75,7 +76,12 @@ var aiImproveCmd = &wcli.Command{
 		if err != nil {
 			return err
 		}
-		result, err := appLLM.ImproveWithComment(context.Background(), client, cfg.LLM.Model, note.Title, note.Content, improveComment)
+		var result appLLM.ImproveResult
+		err = utils.WithSpinner("노트 개선안 생성 중...", func() error {
+			var innerErr error
+			result, innerErr = appLLM.ImproveWithComment(context.Background(), client, cfg.LLM.Model, note.Title, note.Content, improveComment)
+			return innerErr
+		})
 		if err != nil {
 			return err
 		}
@@ -119,7 +125,12 @@ var aiTodosCmd = &wcli.Command{
 		if err != nil {
 			return err
 		}
-		result, err := appLLM.ExtractTodos(context.Background(), client, cfg.LLM.Model, note.Title, note.Content)
+		var result appLLM.TodoResult
+		err = utils.WithSpinner("할 일 목록 추출 중...", func() error {
+			var innerErr error
+			result, innerErr = appLLM.ExtractTodos(context.Background(), client, cfg.LLM.Model, note.Title, note.Content)
+			return innerErr
+		})
 		if err != nil {
 			return err
 		}
@@ -190,7 +201,12 @@ var aiSummarizeFileCmd = &wcli.Command{
 		if err != nil {
 			return err
 		}
-		result, err := appLLM.SummarizeText(context.Background(), client, cfg.LLM.Model, file.OriginalFilename, content)
+		var result appLLM.FileSummaryResult
+		err = utils.WithSpinner("첨부파일 요약 중...", func() error {
+			var innerErr error
+			result, innerErr = appLLM.SummarizeText(context.Background(), client, cfg.LLM.Model, file.OriginalFilename, content)
+			return innerErr
+		})
 		if err != nil {
 			return err
 		}
@@ -246,7 +262,12 @@ var aiIndexCmd = &wcli.Command{
 			}
 			notes = filterNotesByID(notes, id)
 		}
-		indexed, err := indexNotes(context.Background(), client, embStore, cfg.LLM.EmbeddingModel, notes)
+		var indexed int
+		err = utils.WithSpinner("임베딩 인덱싱 중...", func() error {
+			var innerErr error
+			indexed, innerErr = indexNotes(context.Background(), client, embStore, cfg.LLM.EmbeddingModel, notes)
+			return innerErr
+		})
 		if err != nil {
 			return err
 		}
@@ -279,7 +300,12 @@ var aiSearchCmd = &wcli.Command{
 		if err != nil {
 			return err
 		}
-		response, err := client.CreateEmbeddings(context.Background(), llmEmbeddingRequest(cfg.LLM.EmbeddingModel, strings.Join(ctx.Args, " ")))
+		var response *llmapi.EmbeddingResponse
+		err = utils.WithSpinner("검색어 임베딩 생성 중...", func() error {
+			var innerErr error
+			response, innerErr = client.CreateEmbeddings(context.Background(), llmEmbeddingRequest(cfg.LLM.EmbeddingModel, strings.Join(ctx.Args, " ")))
+			return innerErr
+		})
 		if err != nil {
 			return fmt.Errorf("검색어 임베딩을 생성하지 못했습니다: %w", err)
 		}
