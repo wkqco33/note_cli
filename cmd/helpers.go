@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -17,7 +18,14 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-const maxAttachedFileSize = 500 * 1024 * 1024
+const (
+	// maxAttachedFileSize 첨부 파일 개별 최대 크기
+	maxAttachedFileSize = 500 * 1024 * 1024
+	// defaultNoteCategory 카테고리 미지정 시 기본값
+	defaultNoteCategory = "other"
+	// contentStdinMarker 내용을 stdin에서 읽는다는 표식
+	contentStdinMarker = "-"
+)
 
 func requireMaxArgs(args []string, max int) error {
 	if len(args) > max {
@@ -89,20 +97,117 @@ func requiredInput(message string) func(string) error {
 	}
 }
 
-// runNoteForm 노트 제목/카테고리 입력 폼 실행 (add/edit 공용)
-func runNoteForm(title, category *string) error {
-	return huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Title("제목").
-				Value(title).
-				Validate(requiredInput("제목을 입력해야 합니다")),
-			huh.NewSelect[string]().
-				Title("카테고리").
-				Options(categorySelectOptions()...).
-				Value(category),
-		),
-	).Run()
+// runNoteForm 노트 제목/카테고리 입력 폼 실행 (add/edit 공용).
+// askTitle/askCategory가 false인 필드는 프롬프트를 건너뛰고 전달된 값을 유지한다.
+func runNoteForm(askTitle, askCategory bool, title, category *string) error {
+	var fields []huh.Field
+	if askTitle {
+		fields = append(fields, huh.NewInput().
+			Title("제목").
+			Value(title).
+			Validate(requiredInput("제목을 입력해야 합니다")))
+	}
+	if askCategory {
+		fields = append(fields, huh.NewSelect[string]().
+			Title("카테고리").
+			Options(categorySelectOptions()...).
+			Value(category))
+	}
+	if len(fields) == 0 {
+		return nil
+	}
+
+	return huh.NewForm(huh.NewGroup(fields...)).Run()
+}
+
+// providedNoteFields 플래그로 명시적으로 지정된 노트 필드.
+// nil이면 해당 필드는 지정되지 않은 것으로 간주해 기존 값/폼 입력을 유지한다.
+type providedNoteFields struct {
+	Title    *string
+	Category *string
+	Content  *string
+}
+
+// contentFlagsChanged 내용 관련 플래그(--content/--content-file)가 지정되었는지 판단
+func contentFlagsChanged(content, contentFile string) bool {
+	return content != "" || contentFile != ""
+}
+
+// resolveNoteContent 플래그로 지정된 내용을 해석한다.
+// content가 "-"면 stdin에서, contentFile이 있으면 파일에서 읽는다.
+// 두 플래그 동시 지정과 빈 결과는 에러로 처리한다 (편집기 폴백 시 세션이 멈출 수 있음).
+func resolveNoteContent(content, contentFile string, stdin io.Reader) (string, error) {
+	if content != "" && contentFile != "" {
+		return "", fmt.Errorf("--content와 --content-file은 동시에 지정할 수 없습니다")
+	}
+
+	switch {
+	case content == contentStdinMarker:
+		data, err := io.ReadAll(stdin)
+		if err != nil {
+			return "", fmt.Errorf("stdin을 읽지 못했습니다: %w", err)
+		}
+		content = string(data)
+	case contentFile != "":
+		data, err := os.ReadFile(contentFile)
+		if err != nil {
+			return "", fmt.Errorf("내용 파일을 읽지 못했습니다 (%s): %w", contentFile, err)
+		}
+		content = string(data)
+	}
+
+	content = strings.TrimRight(content, "\n")
+	if content == "" {
+		return "", fmt.Errorf("노트 내용이 비어 있습니다")
+	}
+
+	return content, nil
+}
+
+// categoryValues 선택 옵션에서 카테고리 값 목록을 파생한다
+func categoryValues() []string {
+	options := categorySelectOptions()
+	values := make([]string, 0, len(options))
+	for _, opt := range options {
+		values = append(values, opt.Value)
+	}
+
+	return values
+}
+
+// normalizeNoteCategory 카테고리 플래그 값을 검증/정규화한다. 빈 값은 기본값으로 대체.
+func normalizeNoteCategory(category string) (string, error) {
+	trimmed := strings.TrimSpace(strings.ToLower(category))
+	if trimmed == "" {
+		return defaultNoteCategory, nil
+	}
+
+	for _, v := range categoryValues() {
+		if v == trimmed {
+			return trimmed, nil
+		}
+	}
+
+	return "", fmt.Errorf("카테고리는 %s 중 하나여야 합니다", strings.Join(categoryValues(), ", "))
+}
+
+// mergeNoteFields 기존 노트에 플래그로 지정된 필드만 덮어써 반환한다 (edit용)
+func mergeNoteFields(note *api.BoardRead, provided providedNoteFields) (title, category, content string) {
+	title = note.Title
+	category = note.Category
+	content = note.Content
+
+	if provided.Title != nil {
+		title = *provided.Title
+	}
+	if provided.Category != nil {
+		category = *provided.Category
+	}
+	if provided.Content != nil {
+		content = strings.TrimRight(*provided.Content, "\n")
+	}
+
+	return title, category, content
 }
 
 // uploadAttachedFiles 첨부 파일들을 순서대로 업로드하고 URL 목록 반환
