@@ -312,7 +312,6 @@ func buildBoardTable(notes []api.BoardRead) string {
 	return b.String()
 }
 
-
 // padRight 표시 폭 기준으로 우측에 공백을 채운다 (전각 문자 2칸 계산).
 func padRight(s string, width int) string {
 	pad := width - runewidth.StringWidth(s)
