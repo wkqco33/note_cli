@@ -4,13 +4,13 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/huh"
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
-var loginCmd = &cobra.Command{
+var loginCmd = &wcli.Command{
 	Use:   "login",
 	Short: "Note API 로그인",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
 		var email, password string
 
 		form := huh.NewForm(

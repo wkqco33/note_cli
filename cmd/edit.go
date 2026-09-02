@@ -5,16 +5,19 @@ import (
 	"note_cli/api"
 	"note_cli/tui"
 
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
 var editAttachedFiles []string
 
-var editCmd = &cobra.Command{
+var editCmd = &wcli.Command{
 	Use:   "edit [id]",
 	Short: "기존 노트 수정",
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
+		if err := requireMaxArgs(ctx.Args, 1); err != nil {
+			return err
+		}
+		args := ctx.Args
 		if err := validateAttachedFiles(editAttachedFiles); err != nil {
 			return err
 		}
@@ -76,6 +79,6 @@ var editCmd = &cobra.Command{
 }
 
 func init() {
-	editCmd.Flags().StringSliceVarP(&editAttachedFiles, "file", "f", []string{}, "추가로 첨부할 파일 경로 (여러 개 지정 가능)")
+	editCmd.Flags().StringSliceVar(&editAttachedFiles, "file", "f", []string{}, "추가로 첨부할 파일 경로 (여러 개 지정 가능)")
 	rootCmd.AddCommand(editCmd)
 }

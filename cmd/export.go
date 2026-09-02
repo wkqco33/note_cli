@@ -9,15 +9,18 @@ import (
 	"time"
 
 	"github.com/schollz/progressbar/v3"
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
-var exportCmd = &cobra.Command{
+var exportCmd = &wcli.Command{
 	Use:   "export [PATH]",
 	Short: "노트 및 첨부파일 백업 내보내기",
 	Long:  `현재 사용자의 모든 노트와 업로드된 첨부파일을 지정한 ZIP 아카이브 경로로 백업합니다.`,
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
+		if err := requireMaxArgs(ctx.Args, 1); err != nil {
+			return err
+		}
+		args := ctx.Args
 		client, err := newAuthenticatedClient()
 		if err != nil {
 			return err

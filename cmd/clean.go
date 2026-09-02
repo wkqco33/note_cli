@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
 // findCleanCacheFiles 지정 디렉토리에서 임시 캐시 파일(note_img_*)을 찾는다.
@@ -32,11 +32,11 @@ func cleanCacheFiles(paths []string, sourceDir string) (deleted int, totalSize i
 	return deleted, totalSize
 }
 
-var cleanCmd = &cobra.Command{
+var cleanCmd = &wcli.Command{
 	Use:   "clean",
 	Short: "임시 캐시 파일 삭제",
 	Long:  "view 명령 실행 중 생성된 임시 이미지 파일을 정리합니다.",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
 		tmpDir := os.TempDir()
 		matches, err := findCleanCacheFiles(tmpDir)
 		if err != nil {

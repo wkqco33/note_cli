@@ -9,13 +9,13 @@ import (
 
 	"note_cli/config"
 
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
-var configCmd = &cobra.Command{
+var configCmd = &wcli.Command{
 	Use:   "config",
 	Short: "현재 설정 조회 및 수정",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
 		cfg, err := loadConfig()
 		if err != nil {
 			return err
@@ -54,17 +54,19 @@ var configCmd = &cobra.Command{
 	},
 }
 
-var configSetCmd = &cobra.Command{
+var configSetCmd = &wcli.Command{
 	Use:   "set <key> <value>",
 	Short: "설정 값 수정 (mode, host, port, auto_login)",
-	Args:  cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
+		if err := requireExactArgs(ctx.Args, 2); err != nil {
+			return err
+		}
 		cfg, err := loadConfig()
 		if err != nil {
 			return err
 		}
 
-		key, value := args[0], args[1]
+		key, value := ctx.Args[0], ctx.Args[1]
 		if err := applyConfigValue(cfg, key, value); err != nil {
 			return err
 		}

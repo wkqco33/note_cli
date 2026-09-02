@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
 var (
@@ -15,10 +15,10 @@ var (
 	searchFile    string
 )
 
-var searchCmd = &cobra.Command{
+var searchCmd = &wcli.Command{
 	Use:   "search",
 	Short: "노트 검색 (제목, 내용, 파일명)",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
 		client, err := newAuthenticatedClient()
 		if err != nil {
 			return err
@@ -145,8 +145,8 @@ func boardMatchesFile(note api.BoardRead, urlToFilename map[string]string, fileL
 }
 
 func init() {
-	searchCmd.Flags().StringVarP(&searchTitle, "title", "t", "", "노트 제목으로 검색")
-	searchCmd.Flags().StringVarP(&searchContent, "content", "c", "", "노트 내용으로 검색")
-	searchCmd.Flags().StringVarP(&searchFile, "file", "f", "", "첨부 파일명으로 검색")
+	searchCmd.Flags().StringVar(&searchTitle, "title", "t", "", "노트 제목으로 검색")
+	searchCmd.Flags().StringVar(&searchContent, "content", "c", "", "노트 내용으로 검색")
+	searchCmd.Flags().StringVar(&searchFile, "file", "f", "", "첨부 파일명으로 검색")
 	rootCmd.AddCommand(searchCmd)
 }

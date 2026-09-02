@@ -6,14 +6,17 @@ import (
 
 	"note_cli/api"
 
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
-var downloadCmd = &cobra.Command{
+var downloadCmd = &wcli.Command{
 	Use:   "download [file_id]",
 	Short: "파일 ID로 첨부파일 다운로드",
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
+		if err := requireMaxArgs(ctx.Args, 1); err != nil {
+			return err
+		}
+		args := ctx.Args
 		client, err := newAuthenticatedClient()
 		if err != nil {
 			return err

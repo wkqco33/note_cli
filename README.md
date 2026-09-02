@@ -307,7 +307,7 @@ note_cli/
 
 | 패키지                                                   | 용도                         |
 | -------------------------------------------------------- | ---------------------------- |
-| [cobra](https://github.com/spf13/cobra)                  | CLI 명령어 프레임워크        |
+| [wcli](https://github.com/wkqco33/wcli)                  | CLI 명령어 프레임워크        |
 | [huh](https://github.com/charmbracelet/huh)              | 인터랙티브 TUI 폼            |
 | [lipgloss](https://github.com/charmbracelet/lipgloss)    | 터미널 스타일링              |
 | [glamour](https://github.com/charmbracelet/glamour)      | Markdown 렌더링              |

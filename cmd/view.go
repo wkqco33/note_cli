@@ -9,8 +9,8 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/spf13/cobra"
 	"github.com/wkqco33/tdraw"
+	"github.com/wkqco33/wcli"
 )
 
 var noImage bool
@@ -31,11 +31,14 @@ func isImageFile(f api.FileRead) bool {
 	return imageExts[filepath.Ext(orig)]
 }
 
-var viewCmd = &cobra.Command{
+var viewCmd = &wcli.Command{
 	Use:   "view [id]",
 	Short: "ID로 노트 조회",
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
+		if err := requireMaxArgs(ctx.Args, 1); err != nil {
+			return err
+		}
+		args := ctx.Args
 		client, err := newAuthenticatedClient()
 		if err != nil {
 			return err
@@ -135,5 +138,5 @@ var viewCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(viewCmd)
-	viewCmd.Flags().BoolVar(&noImage, "no-image", false, "이미지 파일을 터미널에 렌더링하지 않음")
+	viewCmd.Flags().BoolVar(&noImage, "no-image", "", false, "이미지 파일을 터미널에 렌더링하지 않음")
 }

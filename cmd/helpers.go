@@ -19,6 +19,20 @@ import (
 
 const maxAttachedFileSize = 500 * 1024 * 1024
 
+func requireMaxArgs(args []string, max int) error {
+	if len(args) > max {
+		return fmt.Errorf("인자는 최대 %d개까지 지정할 수 있습니다", max)
+	}
+	return nil
+}
+
+func requireExactArgs(args []string, expected int) error {
+	if len(args) != expected {
+		return fmt.Errorf("인자는 정확히 %d개를 지정해야 합니다", expected)
+	}
+	return nil
+}
+
 // binaryName 안내 문구에 사용할 실제 실행 파일 이름 (예: ncli)
 func binaryName() string {
 	return strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")

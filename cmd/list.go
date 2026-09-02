@@ -3,13 +3,13 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
-var listCmd = &cobra.Command{
+var listCmd = &wcli.Command{
 	Use:   "list",
 	Short: "모든 노트 목록 조회",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
 		client, err := newAuthenticatedClient()
 		if err != nil {
 			return err

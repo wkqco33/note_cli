@@ -4,16 +4,19 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/huh"
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
 var deleteFile bool
 
-var deleteCmd = &cobra.Command{
+var deleteCmd = &wcli.Command{
 	Use:   "delete [id]",
 	Short: "노트 또는 첨부파일 삭제",
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
+		if err := requireMaxArgs(ctx.Args, 1); err != nil {
+			return err
+		}
+		args := ctx.Args
 		client, err := newAuthenticatedClient()
 		if err != nil {
 			return err
@@ -90,6 +93,6 @@ var deleteCmd = &cobra.Command{
 }
 
 func init() {
-	deleteCmd.Flags().BoolVarP(&deleteFile, "file", "f", false, "파일 삭제 모드")
+	deleteCmd.Flags().BoolVar(&deleteFile, "file", "f", false, "파일 삭제 모드")
 	rootCmd.AddCommand(deleteCmd)
 }

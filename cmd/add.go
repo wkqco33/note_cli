@@ -5,15 +5,15 @@ import (
 	"note_cli/api"
 	"note_cli/tui"
 
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
 var attachedFiles []string
 
-var addCmd = &cobra.Command{
+var addCmd = &wcli.Command{
 	Use:   "add",
 	Short: "새 노트 추가",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
 		client, err := newAuthenticatedClient()
 		if err != nil {
 			return err
@@ -64,6 +64,6 @@ var addCmd = &cobra.Command{
 }
 
 func init() {
-	addCmd.Flags().StringSliceVarP(&attachedFiles, "file", "f", []string{}, "첨부할 파일 경로 (여러 개 지정 가능)")
+	addCmd.Flags().StringSliceVar(&attachedFiles, "file", "f", []string{}, "첨부할 파일 경로 (여러 개 지정 가능)")
 	rootCmd.AddCommand(addCmd)
 }

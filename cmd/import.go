@@ -10,7 +10,7 @@ import (
 	"note_cli/api"
 
 	"github.com/charmbracelet/huh"
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
 var cleanImport bool
@@ -18,12 +18,15 @@ var cleanImport bool
 // maxRestoreFileSize 복원 시 개별 파일 최대 크기 (서버 업로드 제한 10MB와 일치).
 const maxRestoreFileSize = 10 * 1024 * 1024
 
-var importCmd = &cobra.Command{
+var importCmd = &wcli.Command{
 	Use:   "import [PATH]",
 	Short: "백업 파일에서 노트 및 첨부파일 복원",
 	Long:  `지정된 ZIP 백업 아카이브에서 노트와 첨부파일을 가져와 서버에 복원합니다.`,
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
+		if err := requireExactArgs(ctx.Args, 1); err != nil {
+			return err
+		}
+		args := ctx.Args
 		client, err := newAuthenticatedClient()
 		if err != nil {
 			return err
@@ -254,6 +257,6 @@ func exceedsRestoreFileSize(f *zip.File) bool {
 }
 
 func init() {
-	importCmd.Flags().BoolVar(&cleanImport, "clean", false, "복원하기 전에 서버의 모든 기존 노트와 파일을 삭제합니다.")
+	importCmd.Flags().BoolVar(&cleanImport, "clean", "", false, "복원하기 전에 서버의 모든 기존 노트와 파일을 삭제합니다.")
 	rootCmd.AddCommand(importCmd)
 }

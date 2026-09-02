@@ -5,13 +5,13 @@ import (
 	"note_cli/api"
 
 	"github.com/charmbracelet/huh"
-	"github.com/spf13/cobra"
+	"github.com/wkqco33/wcli"
 )
 
-var registerCmd = &cobra.Command{
+var registerCmd = &wcli.Command{
 	Use:   "register",
 	Short: "새 사용자 계정 등록",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(ctx *wcli.Context) error {
 		var name, email, password string
 
 		form := huh.NewForm(

@@ -7,7 +7,7 @@
 `note_cli`는 로컬 SQLite 또는 원격 API(`https://github.com/wkqco33/tdraw` 백엔드)를 사용하는 빠르고 간단한 터미널 기반 노트 에디터입니다.
 
 - 언어: **Go** (`go.mod`의 `go` 지시문 참고)
-- CLI 프레임워크: `github.com/spf13/cobra`
+- CLI 프레임워크: `github.com/wkqco33/wcli`
 - TUI/폼: `github.com/charmbracelet/huh`, `bubbletea`, `glamour`, `lipgloss`
 - 도구: `task` (Taskfile.yml), `go vet`, `gofmt` (GO 스타일)
 
@@ -16,7 +16,7 @@
 ```
 .
 ├── api/    # 백엔드 API 클라이언트 (HTTP 요청, 응답 파싱, 모델)
-├── cmd/    # cobra 커맨드 정의 + 커맨드 전용 헬퍼/로직
+├── cmd/    # wcli 커맨드 정의 + 커맨드 전용 헬퍼/로직
 ├── config/ # 설정 로드/저장, 비밀값 관리
 ├── local/  # 로컬 SQLite 노트 저장소
 ├── tui/    # 터미널 UI (편집기 진입 등)
@@ -29,7 +29,7 @@
 - **탈객체지향, 데이터 중심, 성능 최우선**입니다.
 - 복잡한 객체지향 설계/추상화/레이어보다 **간단한 함수형 프로그래밍과 데이터 중심 설계**를 선호합니다.
 - 데이터 구조는 `struct`로 스키마를 명확히 정의하고 타입을 드러냅니다.
-- I/O나 외부 의존성(cobra 실행, huh 폼, 네트워크)과 **순수 로직(파싱, 필터링, 문자열 처리)을 분리**해서 테스트하기 쉽게 만듭니다. 순수 로직은 `func`로 추출하고, `RunE` 안에는 오케스트레이션만 남깁니다.
+- I/O나 외부 의존성(wcli 실행, huh 폼, 네트워크)과 **순수 로직(파싱, 필터링, 문자열 처리)을 분리**해서 테스트하기 쉽게 만듭니다. 순수 로직은 `func`로 추출하고, `Run` 안에는 오케스트레이션만 남깁니다.
   - 예: `printBoardTable`의 실제 표 생성은 순수 함수 `buildBoardTable`로 분리
   - 예: `clean` 커맨드의 검색/삭제 로직은 `findCleanCacheFiles`, `cleanCacheFiles`로 분리
 - **테스트를 위한 인터페이스/훅은 최소로만 추가**합니다 (예: `utils.SetLoggerHandler`).
