@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	llmapi "github.com/wkqco33/LLM_client_go"
@@ -42,6 +43,34 @@ func TestImproveBuildsStructuredRequest(t *testing.T) {
 	}
 	if client.request.Model != "test-model" || client.request.ResponseFormat == nil {
 		t.Fatalf("request did not include model and response format: %+v", client.request)
+	}
+	if !strings.Contains(client.request.Messages[0].Content, "한국어") {
+		t.Fatal("improvement prompt does not require Korean output")
+	}
+}
+
+func TestImproveWithCommentIncludesUserRequest(t *testing.T) {
+	client := &fakeClient{response: responseWithContent(`{"title":"간결한 제목","content":"보강된 본문","changes":[],"warnings":[]}`)}
+	_, err := ImproveWithComment(context.Background(), client, "model", "제목", "본문", "제목을 간결하게 작성하고 설명을 보강해줘")
+	if err != nil {
+		t.Fatalf("ImproveWithComment() error = %v", err)
+	}
+	if !strings.Contains(client.request.Messages[1].Content, "제목을 간결하게 작성하고 설명을 보강해줘") {
+		t.Fatalf("user comment was not included: %s", client.request.Messages[1].Content)
+	}
+}
+
+func TestImproveAcceptsStringChangeList(t *testing.T) {
+	client := &fakeClient{response: responseWithContent(`{"title":"제목","content":"본문 개선","changes":"문장을 간결하게 수정","warnings":"주의 사항 없음"}`)}
+	result, err := Improve(context.Background(), client, "model", "제목", "본문")
+	if err != nil {
+		t.Fatalf("Improve() error = %v", err)
+	}
+	if len(result.Changes) != 1 || result.Changes[0] != "문장을 간결하게 수정" {
+		t.Fatalf("unexpected changes: %#v", result.Changes)
+	}
+	if len(result.Warnings) != 1 || result.Warnings[0] != "주의 사항 없음" {
+		t.Fatalf("unexpected warnings: %#v", result.Warnings)
 	}
 }
 

@@ -169,6 +169,8 @@ ncli search [flags]
 
 LLM 기능은 기본적으로 로컬 Ollama를 사용합니다. Ollama를 실행하고 모델을 준비한 뒤 사용할 수 있습니다.
 
+LLM이 생성하는 제목, 요약, 할 일, 변경 사항과 주의 사항은 한국어를 기준으로 출력합니다. 코드, 명령어, URL, 토큰, 파일명과 같은 식별 가능한 값은 원문을 유지합니다.
+
 ```bash
 ollama serve
 ollama pull llama3.2
@@ -180,6 +182,8 @@ ncli ai status
 ```bash
 ncli ai improve 12
 ncli ai improve
+ncli ai improve 12 --comment "제목을 간결하게 작성하고 설명을 보강해줘"
+ncli ai improve 12 -c "문장을 더 공식적인 표현으로 다듬어줘"
 ncli ai improve 12 --apply
 ```
 

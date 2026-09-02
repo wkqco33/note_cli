@@ -19,6 +19,7 @@ import (
 
 var applyImprovement bool
 var createTodoNote bool
+var improveComment string
 
 var aiCmd = &wcli.Command{
 	Use:   "ai",
@@ -74,7 +75,7 @@ var aiImproveCmd = &wcli.Command{
 		if err != nil {
 			return err
 		}
-		result, err := appLLM.Improve(context.Background(), client, cfg.LLM.Model, note.Title, note.Content)
+		result, err := appLLM.ImproveWithComment(context.Background(), client, cfg.LLM.Model, note.Title, note.Content, improveComment)
 		if err != nil {
 			return err
 		}
@@ -456,6 +457,7 @@ func maskedValue(value string) string {
 }
 
 func init() {
+	aiImproveCmd.Flags().StringVar(&improveComment, "comment", "c", "", "개선 방향 또는 추가 요청")
 	aiImproveCmd.Flags().BoolVar(&applyImprovement, "apply", "", false, "개선 결과를 노트에 저장")
 	aiTodosCmd.Flags().BoolVar(&createTodoNote, "create-note", "", false, "추출 결과를 새 노트로 저장")
 	aiCmd.AddCommand(aiStatusCmd)
