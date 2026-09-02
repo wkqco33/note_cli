@@ -13,6 +13,7 @@ var (
 	searchTitle   string
 	searchContent string
 	searchFile    string
+	searchFormat  string
 )
 
 var searchCmd = &wcli.Command{
@@ -82,13 +83,32 @@ var searchCmd = &wcli.Command{
 
 		results := filterBoards(notes, files, searchTitle, searchContent, searchFile)
 
+		format, err := parseOutputFormat(searchFormat)
+		if err != nil {
+			return err
+		}
+
 		if len(results) == 0 {
-			fmt.Println("검색 결과가 없습니다.")
+			if format == formatText {
+				fmt.Println("검색 결과가 없습니다.")
+			} else {
+				rendered, renderErr := renderNotes(nil, format)
+				if renderErr != nil {
+					return renderErr
+				}
+				printRenderedNotes(rendered)
+			}
 			return nil
 		}
 
-		fmt.Printf("총 %d개의 노트를 찾았습니다.\n", len(results))
-		printBoardTable(results)
+		if format == formatText {
+			fmt.Printf("총 %d개의 노트를 찾았습니다.\n", len(results))
+		}
+		rendered, err := renderNotes(results, format)
+		if err != nil {
+			return err
+		}
+		printRenderedNotes(rendered)
 		return nil
 	},
 }
@@ -148,5 +168,6 @@ func init() {
 	searchCmd.Flags().StringVar(&searchTitle, "title", "t", "", "노트 제목으로 검색")
 	searchCmd.Flags().StringVar(&searchContent, "content", "c", "", "노트 내용으로 검색")
 	searchCmd.Flags().StringVar(&searchFile, "file", "f", "", "첨부 파일명으로 검색")
+	searchCmd.Flags().StringVar(&searchFormat, "format", "", "", "출력 형식 지정 (text, json, yaml)")
 	rootCmd.AddCommand(searchCmd)
 }

@@ -14,6 +14,7 @@ import (
 )
 
 var noImage bool
+var viewFormat string
 
 var imageExts = map[string]bool{
 	".png": true, ".jpg": true, ".jpeg": true,
@@ -52,6 +53,20 @@ var viewCmd = &wcli.Command{
 		note, err := client.GetBoard(id)
 		if err != nil {
 			return fmt.Errorf("노트를 불러오지 못했습니다: %w", err)
+		}
+
+		// 구조화 출력 형식이면 렌더링/이미지 처리 없이 노트 데이터만 출력
+		format, err := parseOutputFormat(viewFormat)
+		if err != nil {
+			return err
+		}
+		if format != formatText {
+			rendered, err := renderNote(note, format)
+			if err != nil {
+				return err
+			}
+			fmt.Println(rendered)
+			return nil
 		}
 
 		updatedStr := formatTimestamp(note.UpdatedAt, 19)
@@ -139,4 +154,5 @@ var viewCmd = &wcli.Command{
 func init() {
 	rootCmd.AddCommand(viewCmd)
 	viewCmd.Flags().BoolVar(&noImage, "no-image", "", false, "이미지 파일을 터미널에 렌더링하지 않음")
+	viewCmd.Flags().StringVar(&viewFormat, "format", "", "", "출력 형식 지정 (text, json, yaml)")
 }

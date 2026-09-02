@@ -138,6 +138,24 @@ ncli add
 - `Idea`
 - `Other`
 
+플래그를 지정하면 해당 항목의 폼/편집기 입력을 건너뜁니다. 모든 플래그를 지정하면 대화형 입력 없이 즉시 생성되므로 에이전트나 스크립트에서 유용합니다.
+
+```bash
+# 제목/카테고리/내용을 한 번에 지정 (비대화형)
+ncli add --title "회의 메모" --content-file meeting.md --category work
+
+# stdin으로 내용 전달
+echo "할 일 목록" | ncli add -t "할 일" -c -
+
+# 제목만 지정 → 내용은 편집기에서 작성
+ncli add --title "아이디어"
+
+# 카테고리 미지정 시 other로 생성
+ncli add -t "메모" -c "내용"
+```
+
+플래그: `--title/-t`, `--content/-c` (`-`면 stdin), `--content-file`, `--category`, `--file/-f`
+
 #### 노트 조회
 
 ```bash
@@ -162,6 +180,33 @@ ncli search [flags]
 ```
 
 - `edit`: 기존 노트의 제목, 카테고리, 내용, 첨부파일을 수정할 수 있습니다. ID 생략 시 TUI 화면에서 수정할 노트를 고를 수 있습니다.
+  - `add`와 동일하게 `--title/-t`, `--content/-c`, `--content-file`, `--category` 플래그를 지원하며, 플래그를 지정한 항목은 폼/편집기 입력 없이 즉시 수정됩니다. 지정하지 않은 필드는 기존 값이 유지됩니다.
+
+```bash
+# 제목만 변경 (내용/카테고리는 기존 값 유지)
+ncli edit 3 --title "수정된 제목"
+
+# 파일의 내용으로 교체
+ncli edit 3 --content-file new_content.md
+
+# stdin으로 내용 교체
+echo "새 내용" | ncli edit 3 -c -
+```
+
+#### 구조화 출력 (--format)
+
+`list`, `search`, `view`는 `--format` 플래그로 출력 형식을 지정할 수 있습니다. `json` 또는 `yaml`을 지정하면 색상·표 렌더링 없이 데이터 그대로 출력되므로 스크립트나 에이전트 파이프라인에서 유용합니다.
+
+```bash
+ncli list --format json
+ncli list --format yaml
+ncli search --title 회의 --format json
+ncli view 3 --format yaml
+```
+
+- 미지정 시 기존과 같이 사람이 읽는 형식(text)으로 출력됩니다.
+- `json`/`yaml` 출력 시 이미지 렌더링, 안내 문구 없이 순수 데이터만 출력됩니다.
+- 지원하지 않는 형식을 지정하면 오류와 함께 가능한 값이 안내됩니다.
 - `download`: 노트의 첨부파일을 다운로드합니다. 파일 전송에는 진행률 표시줄(Progress bar)이 제공되며, ID 생략 시 전체 파일 목록을 TUI 기반으로 탐색하여 다운로드할 수 있습니다. 원본 파일명으로 저장됩니다.
 - `search`: `--title (제목)`, `--content (내용)`, `--file (첨부파일명)` 플래그를 조합하여 노트를 빠르게 검색할 수 있습니다. 아무 플래그도 입력하지 않으면 대화형(TUI) 방식으로 검색 조건을 선택할 수 있습니다.
 
@@ -195,6 +240,15 @@ ncli ai todos
 ncli ai todos 12 --create-note
 ncli ai summarize-file 3
 ncli ai summarize-file
+```
+
+사용자 요청에 따라 LLM이 노트를 생성해 바로 저장할 수 있습니다. 인자 없이 실행하면 요청을 폼에서 입력받습니다. LLM이 제목, 본문(Markdown), 카테고리를 제안하며, `--category`로 카테고리를 강제할 수 있습니다.
+
+```bash
+ncli ai create "어제 회의 내용을 회의록으로 정리해줘"
+ncli ai create --category work "오늘 한 일 정리"
+ncli ai create --dry-run "아이디어 브레인스톤 노트"   # 저장하지 않고 미리보기만
+ncli ai create        # 요청을 폼에서 입력
 ```
 
 `ai improve`, `ai todos`, `ai summarize-file`은 ID를 생략하면 TUI에서 대상 노트 또는 첨부파일을 선택합니다. ID를 직접 지정할 수도 있습니다. `summarize-file`은 첨부파일 ID를 사용합니다. 현재 텍스트 기반 파일(`txt`, `md`, `csv`, `json`, `log`)을 지원하며, 분석 대상 파일은 2MB 이하입니다.
