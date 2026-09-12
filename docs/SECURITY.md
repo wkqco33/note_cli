@@ -1,14 +1,14 @@
 # 보안 정책
 
-`note_cli`는 인증 토큰과 비밀번호를 로컬에서 암호화해 보관하며, 원격 API와 통신하는 CLI 도구입니다. 이 프로젝트의 보안 취약점을 발견하셨다면 아래 절차에 따라 알려주시기 바랍니다.
+`note_cli`는 인증 토큰과 비밀번호를 로컬에서 암호화해 보관하며, 원격 API와 통신하는 CLI 도구입니다. 이 프로젝트의 보안 취약점을 발견하셨다면 아래 절차에 따라 알려 주시기 바랍니다.
 
 ## 신고 절차
 
 **중요:** 취약점을 공개 이슈(issue)나 PR에 작성하지 마세요. 다른 사용자에게도 피해가 갈 수 있습니다.
 
-1. GitHub의 [Private Vulnerability Reporting](https://github.com/wkqco33/note_cli/security/advisories/new) 기능을 사용해 보고해주세요. (권장)
-2. 만약 GitHub 리포지토리에서 보고가 불가능한 경우, 리포지토리 소유자에게 이메일로 알려주세요. 신고 시 다음 정보를 포함해 주세요:
-   - 취약점 종류와 발생 위치(파일/함수)가 있으면
+1. GitHub의 [Private Vulnerability Reporting](https://github.com/wkqco33/note_cli/security/advisories/new) 기능을 사용해 보고해 주세요. (권장)
+2. GitHub 리포지토리에서 보고가 불가능하면 리포지토리 소유자에게 이메일로 알려 주세요. 신고 시 다음 정보를 포함해 주세요.
+   - 취약점 종류와 발생 위치(파일·함수)
    - 재현 단계
    - 영향 범위와 심각도 추정
    - 가능하면 PoC(Proof of Concept)
@@ -48,3 +48,9 @@
 
 - 이 저장소의 보안 설정(`.gitignore`, CI의 gitleaks 스캔 등)에 대한 개선 제안도 환영합니다.
 - 감사 및 보안 관련 문의는 위 신고 채널을 이용해 주세요.
+
+## 관련 문서
+
+- [문서 인덱스](./README.md)
+- [기여 가이드](./CONTRIBUTING.md)
+- [개발 가이드](../AGENTS.md)

@@ -1,5 +1,7 @@
 # 기여자 행동 강령
 
+이 프로젝트에 참여하는 모든 사람에게 적용되는 행동 기준입니다.
+
 ## 우리의 서약
 
 개방적이고 환영하는 커뮤니티를 조성하기 위해, 기여자와 유지보수자들은 프로젝트와 커뮤니티에 참여하는 모든 사람을 나이나 체격, 장애, 민족성, 성별 표현과 정체성, 경력 수준, 교육 수준, 경제 지위, 국적, 개인적 외모, 인종, 종교 또는 성적 정체성과 성향에 관계없이 학대 없는 경험을 제공하겠다고 서약합니다.
@@ -42,3 +44,9 @@
 
 [homepage]: https://www.contributor-covenant.org
 [v2.1]: https://www.contributor-covenant.org/version/2/1/code_of_conduct.html
+
+## 관련 문서
+
+- [문서 인덱스](./README.md)
+- [기여 가이드](./CONTRIBUTING.md)
+- [보안 정책](./SECURITY.md)
