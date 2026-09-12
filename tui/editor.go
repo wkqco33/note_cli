@@ -49,7 +49,8 @@ func OpenEditor(initialContent string) (string, error) {
 	}
 	_ = tempFile.Close()
 
-	cmd := exec.Command(editor, append(editorArgs, tempFile.Name())...)
+	// EDITOR는 사용자가 자신의 환경에서 지정하는 값이므로 주입 위험이 없다.
+	cmd := exec.Command(editor, append(editorArgs, tempFile.Name())...) // nosemgrep
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -37,6 +37,16 @@ func parseOutputFormat(value string) (outputFormat, error) {
 	return "", fmt.Errorf("지원하지 않는 출력 형식입니다: %s (가능한 값: %s)", value, strings.Join(supportedOutputFormats, ", "))
 }
 
+// outputFormatFromFlags 표준 --json 플래그를 우선 적용해 출력 형식을 결정한다.
+// --json이 지정되면 --format 값과 무관하게 json을 사용한다.
+func outputFormatFromFlags(format string, jsonOutput bool) (outputFormat, error) {
+	if jsonOutput {
+		return formatJSON, nil
+	}
+
+	return parseOutputFormat(format)
+}
+
 // renderNotes 노트 목록을 지정한 형식으로 렌더링한다.
 // text는 기존 표 출력, json/yaml은 구조화 출력을 반환한다.
 func renderNotes(notes []api.BoardRead, format outputFormat) (string, error) {
@@ -83,7 +93,13 @@ func renderNote(note *api.BoardRead, format outputFormat) (string, error) {
 	}
 }
 
-// printRenderedNotes 렌더링 결과를 표준 출력에 기록한다
-func printRenderedNotes(rendered string) {
+// printRenderedNotes 렌더링 결과를 표준 출력에 기록한다.
+// page가 true면 사람이 읽는 긴 텍스트로 보고 페이저로 넘긴다.
+func printRenderedNotes(rendered string, page bool) {
+	if page {
+		_ = writePaged(rendered)
+		return
+	}
+
 	_, _ = fmt.Fprint(os.Stdout, rendered)
 }

@@ -12,6 +12,15 @@ var deleteFile bool
 var deleteCmd = &wcli.Command{
 	Use:   "delete [id]",
 	Short: "노트 또는 첨부파일 삭제",
+	Long: `노트 또는 첨부파일을 삭제합니다.
+
+ID를 지정하면 해당 항목을, 생략하면 대화형 목록에서 선택합니다.
+삭제는 확인 프롬프트를 거치며, 비대화형 환경에서는 --yes/-y가 필요합니다.
+
+예시:
+  ncli delete 3
+  ncli delete 3 --yes        # 확인 없이 삭제 (비대화형/CI)
+  ncli delete --file 2 --yes # 첨부파일 삭제`,
 	Run: func(ctx *wcli.Context) error {
 		if err := requireMaxArgs(ctx.Args, 1); err != nil {
 			return err
@@ -31,6 +40,10 @@ var deleteCmd = &wcli.Command{
 		var id int
 
 		if len(args) == 0 {
+			if err := requirePrompt("삭제 대상을 지정하세요: 노트는 '" + binaryName() + " delete <ID>', 파일은 '" + binaryName() + " delete --file <ID>'"); err != nil {
+				return err
+			}
+
 			err = huh.NewSelect[string]().
 				Title("어떤 항목을 삭제하시겠습니까?").
 				Options(
@@ -40,8 +53,7 @@ var deleteCmd = &wcli.Command{
 				Value(&target).
 				Run()
 			if err != nil {
-				fmt.Println("취소되었습니다.")
-				return nil
+				return handlePromptError(err, "취소되었습니다.")
 			}
 
 			if target == "note" {
@@ -64,15 +76,16 @@ var deleteCmd = &wcli.Command{
 			}
 		}
 
-		confirm := false
-		err = huh.NewConfirm().
-			Title(fmt.Sprintf("정말로 ID %d 항목을 삭제하시겠습니까?", id)).
-			Affirmative("예 (삭제)").
-			Negative("아니오 (취소)").
-			Value(&confirm).
-			Run()
-
-		if err != nil || !confirm {
+		confirm, err := askConfirm(
+			fmt.Sprintf("정말로 ID %d 항목을 삭제하시겠습니까?", id),
+			"예 (삭제)",
+			"아니오 (취소)",
+			"삭제하려면 --yes/-y 플래그를 지정하세요",
+		)
+		if err != nil {
+			return err
+		}
+		if !confirm {
 			fmt.Println("삭제가 취소되었습니다.")
 			return nil
 		}

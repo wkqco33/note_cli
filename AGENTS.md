@@ -43,6 +43,34 @@
 - 하드코딩된 값을 상수로 추출합니다 (예: `maxAttachedFileSize`).
 - 패키지 단위로 테스트 파일을 만듭니다 (`*_test.go`).
 
+## 대화형 입력(TUI) 규칙 (중요)
+
+`huh`/`tui` 기반 입력은 **stdin이 터미널일 때만** 허용합니다. 파이프·CI·에이전트 환경에서 조용히 취소되면 자동화가 성공으로 오인하므로, 다음 규칙을 지킵니다.
+
+- 새 입력/선택/확인을 추가할 때는 `cmd/interactive.go`의 헬퍼(`requirePrompt`, `askConfirm`, `runNoteForm`)를 사용합니다. `huh`를 직접 호출하지 않습니다.
+- 프롬프트를 띄울 수 없을 때는 `ErrInteractionRequired`(→ `interactionRequired(hint)`)를 반환해 **종료 코드 2**로 실패하게 합니다. 안내 문구에 쓸 플래그를 반드시 포함합니다(`--yes`, `--title` 등).
+- 사람이 직접 취소한 경우(`huh.ErrUserAborted`)만 `handlePromptError(err, cancelMsg)`로 안내 문구를 출력하고 정상 종료(0)합니다.
+- 입력이 필요한 커맨드는 **반드시 플래그/인자로 대체 경로**를 제공합니다(예: `--title`, `--yes`, `--password-stdin`). 프롬프트를 필수로 만들지 않습니다.
+- TTY 판단은 `stdinIsTerminal`·`promptConfirm` 훅을 통해 테스트에서 교체합니다(실제 TTY 없이 단위 테스트).
+
+## 출력 스트림 규칙
+
+CLI Guidelines(clig.dev)에 맞춰 stdout과 stderr를 구분합니다.
+
+- **stdout**: 명령의 실제 결과(노트 표, `--format json/yaml`, 노트 본문, 최종 결과 한 줄).
+- **stderr**: 진행/상태 안내와 경고, 오류. `statusf`/`statusln`(`cmd/output.go`)을 사용합니다.
+- 진행 메시지는 `fmt.Printf`로 stdout에 직접 쓰지 않습니다. 파이프 소비자가 오염됩니다.
+- `-q/--quiet`이면 `statusf`/`statusln`과 진행률 표시줄(`newProgressBar`)이 출력을 생략합니다.
+- 진행률 표시줄은 `progressBarVisible`로 quiet/비TTY를 검사해 CI 로그에 애니메이션이 남지 않게 합니다.
+- 색상은 비TTY·`NO_COLOR`·`--no-color`에서 자동 비활성화됩니다(`resolveMarkdownStyle`, `os.Setenv("NO_COLOR")`).
+- 표준 플래그 이름을 사용합니다: `--json`, `--quiet/-q`, `--no-color`, `--no-input`, `--version`, `--debug`.
+
+### 페이저와 진행 피드백
+
+- 사람이 읽는 긴 텍스트(`list`/`search` text)는 `writePaged`로 페이저에 넘깁니다. 페이징은 **stdout이 TTY일 때만** 하며 `PAGER`(기본 `less -FIRX`), `quiet`, `--no-pager`, JSON/YAML 출력에서는 하지 않습니다.
+- 네트워크 호출 등 느릴 수 있는 작업은 `utils.WithSpinner`로 감싸 100ms 이내에 피드백을 줍니다. `WithSpinner`는 `spinnerDelay`(150ms) 후에만 표시해 빠른 작업의 깜짝임을 피하고, `Quiet`/비TTY에서는 아무것도 출력하지 않습니다.
+- 스피너 코어는 `withSpinner(message, out, delay, fn)`로 분리되어 TTY 없이 단위 테스트합니다.
+
 ## TDD 방식 (중요)
 
 주요 기능 추가/변경은 **테스트 주도 개발(TDD)** 방식으로 진행합니다:

@@ -99,6 +99,7 @@ func requiredInput(message string) func(string) error {
 
 // runNoteForm 노트 제목/카테고리 입력 폼 실행 (add/edit 공용).
 // askTitle/askCategory가 false인 필드는 프롬프트를 건너뛰고 전달된 값을 유지한다.
+// 입력이 필요한데 프롬프트를 띄울 수 없으면 ErrInteractionRequired를 반환한다.
 func runNoteForm(askTitle, askCategory bool, title, category *string) error {
 	var fields []huh.Field
 	if askTitle {
@@ -117,7 +118,31 @@ func runNoteForm(askTitle, askCategory bool, title, category *string) error {
 		return nil
 	}
 
+	if err := requirePrompt(fmt.Sprintf("%s 플래그로 값을 지정하세요", strings.Join(missingNoteFlags(askTitle, askCategory), ", "))); err != nil {
+		return err
+	}
+
 	return huh.NewForm(huh.NewGroup(fields...)).Run()
+}
+
+// missingNoteFlags 프롬프트 대신 지정해야 할 플래그 목록
+func missingNoteFlags(askTitle, askCategory bool) []string {
+	var missing []string
+	if askTitle {
+		missing = append(missing, "--title/-t")
+	}
+	if askCategory {
+		missing = append(missing, "--category")
+	}
+
+	return missing
+}
+
+// resolveNoteFormPrompts 프롬프트로 입력받을 필드를 결정한다 (add/edit 공용).
+// 값이 지정되지 않았고 프롬프트를 띄울 수 있을 때만 묻는다.
+// 비대화형이면 묻지 않으므로 호출부가 기존 값/기본값을 그대로 사용하거나 에러를 낸다.
+func resolveNoteFormPrompts(title, category string, promptOK bool) (askTitle, askCategory bool) {
+	return title == "" && promptOK, category == "" && promptOK
 }
 
 // providedNoteFields 플래그로 명시적으로 지정된 노트 필드.
@@ -214,23 +239,28 @@ func mergeNoteFields(note *api.BoardRead, provided providedNoteFields) (title, c
 func uploadAttachedFiles(client NoteStore, paths []string) ([]string, error) {
 	var urls []string
 	for _, path := range paths {
-		fmt.Printf("파일 첨부 중: %s\n", path)
+		statusf("파일 첨부 중: %s", path)
 		uploaded, err := client.UploadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("업로드 실패 (%s): %w", path, err)
 		}
 		urls = append(urls, uploaded.URL)
-		fmt.Println("업로드 완료!")
+		statusf("업로드 완료!")
 	}
 
 	return urls, nil
 }
 
 // resolveBoardID ID 인자가 있으면 파싱하고, 없으면 목록에서 선택하게 한다.
+// ID가 없는데 프롬프트를 띄울 수 없으면 ErrInteractionRequired를 반환한다.
 func resolveBoardID(client NoteStore, args []string, prompt, emptyMsg string) (id int, ok bool, err error) {
 	if len(args) == 1 {
 		id, err = parseIDArg(args)
 		return id, err == nil, err
+	}
+
+	if err := requirePrompt("노트 ID를 인자로 지정하세요 (예: " + binaryName() + " view <ID>)"); err != nil {
+		return 0, false, err
 	}
 
 	notes, err := client.GetBoards()
@@ -252,7 +282,12 @@ func resolveBoardID(client NoteStore, args []string, prompt, emptyMsg string) (i
 }
 
 // resolveFileID 파일 목록에서 선택하게 하고 파일 목록도 함께 반환한다.
+// 프롬프트를 띄울 수 없으면 ErrInteractionRequired를 반환한다.
 func resolveFileID(client NoteStore, prompt, emptyMsg string) (id int, files []api.FileRead, ok bool, err error) {
+	if err := requirePrompt("파일 ID를 인자로 지정하세요 (예: " + binaryName() + " download <FILE_ID>)"); err != nil {
+		return 0, nil, false, err
+	}
+
 	files, err = client.GetFiles()
 	if err != nil {
 		return 0, nil, false, fmt.Errorf("파일 목록을 불러오지 못했습니다: %w", err)

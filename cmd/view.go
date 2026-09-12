@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"note_cli/api"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"note_cli/api"
+	"note_cli/utils"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
@@ -13,8 +15,11 @@ import (
 	"github.com/wkqco33/wcli"
 )
 
-var noImage bool
-var viewFormat string
+var (
+	noImage    bool
+	viewFormat string
+	viewJSON   bool
+)
 
 var imageExts = map[string]bool{
 	".png": true, ".jpg": true, ".jpeg": true,
@@ -50,13 +55,18 @@ var viewCmd = &wcli.Command{
 		if err != nil || !ok {
 			return err
 		}
-		note, err := client.GetBoard(id)
+		var note *api.BoardRead
+		err = utils.WithSpinner("노트를 불러오는 중...", func() error {
+			var innerErr error
+			note, innerErr = client.GetBoard(id)
+			return innerErr
+		})
 		if err != nil {
 			return fmt.Errorf("노트를 불러오지 못했습니다: %w", err)
 		}
 
 		// 구조화 출력 형식이면 렌더링/이미지 처리 없이 노트 데이터만 출력
-		format, err := parseOutputFormat(viewFormat)
+		format, err := outputFormatFromFlags(viewFormat, viewJSON)
 		if err != nil {
 			return err
 		}
@@ -88,7 +98,7 @@ var viewCmd = &wcli.Command{
 		fmt.Println(div)
 
 		renderer, err := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
+			glamour.WithStandardStyle(resolveMarkdownStyle(noColorMode)),
 			glamour.WithWordWrap(0),
 		)
 		if err != nil {
@@ -155,4 +165,5 @@ func init() {
 	rootCmd.AddCommand(viewCmd)
 	viewCmd.Flags().BoolVar(&noImage, "no-image", "", false, "이미지 파일을 터미널에 렌더링하지 않음")
 	viewCmd.Flags().StringVar(&viewFormat, "format", "", "", "출력 형식 지정 (text, json, yaml)")
+	viewCmd.Flags().BoolVar(&viewJSON, "json", "", false, "JSON 형식으로 출력 (--format json과 동일)")
 }

@@ -23,12 +23,14 @@ var addCmd = &wcli.Command{
 	Long: `새 노트를 추가합니다.
 
 플래그를 지정하면 해당 항목의 폼/편집기 입력을 건너뜁니다.
-모든 플래그를 지정하면 대화형 입력 없이 즉시 생성되어 에이전트/스크립트에서 유용합니다.
+제목(--title)과 내용(--content/--content-file)을 지정하면 대화형 입력 없이 즉시 생성되며,
+카테고리를 지정하지 않으면 기본값(other)을 사용합니다.
 
 예시:
   ncli add --title "회의 메모" --content-file meeting.md --category work
   echo "본문" | ncli add -t "할 일" -c -
-  ncli add --title "제목"        # 내용만 편집기에서 작성`,
+  ncli add -t "메모" -c "내용" --no-input   # 완전 비대화형
+  ncli add --title "제목"                    # 내용만 편집기에서 작성`,
 	Run: func(ctx *wcli.Context) error {
 		client, err := newAuthenticatedClient()
 		if err != nil {
@@ -56,13 +58,22 @@ var addCmd = &wcli.Command{
 		}
 
 		// 미지정 필드만 폼/편집기로 입력받는다
-		if err := runNoteForm(addTitle == "", addCategory == "", &addTitle, &category); err != nil {
-			fmt.Println("작성이 취소되었습니다.")
-			return nil
+		// 제목은 필수이므로 대화형이 아니면 플래그를 요구한다.
+		// 카테고리는 기본값이 있으므로 대화형이 아니면 기본값을 그대로 사용한다.
+		askTitle, askCategory := resolveNoteFormPrompts(addTitle, addCategory, promptAllowed())
+		if addTitle == "" && !askTitle {
+			return interactionRequired("--title/-t 플래그로 제목을 지정하세요")
+		}
+
+		if err := runNoteForm(askTitle, askCategory, &addTitle, &category); err != nil {
+			return handlePromptError(err, "작성이 취소되었습니다.")
 		}
 
 		if !contentFlagsChanged(addContent, addContentFile) {
-			fmt.Println("노트 내용을 편집기에서 작성합니다...")
+			if !promptAllowed() {
+				return interactionRequired("내용을 지정하세요: --content/-c (stdin은 -c -), --content-file")
+			}
+			statusf("노트 내용을 편집기에서 작성합니다...")
 			content, err = tui.OpenEditor("")
 			if err != nil {
 				return fmt.Errorf("편집기를 열지 못했습니다: %w", err)

@@ -9,7 +9,6 @@ import (
 
 	"note_cli/api"
 
-	"github.com/charmbracelet/huh"
 	"github.com/wkqco33/wcli"
 )
 
@@ -21,7 +20,10 @@ const maxRestoreFileSize = 10 * 1024 * 1024
 var importCmd = &wcli.Command{
 	Use:   "import [PATH]",
 	Short: "백업 파일에서 노트 및 첨부파일 복원",
-	Long:  `지정된 ZIP 백업 아카이브에서 노트와 첨부파일을 가져와 서버에 복원합니다.`,
+	Long: `지정된 ZIP 백업 아카이브에서 노트와 첨부파일을 가져와 서버에 복원합니다.
+
+--clean을 지정하면 복원 전에 서버의 기존 노트와 파일을 모두 삭제합니다.
+이 동작은 확인 프롬프트를 거치며, 비대화형 환경에서는 --yes/-y가 필요합니다.`,
 	Run: func(ctx *wcli.Context) error {
 		if err := requireExactArgs(ctx.Args, 1); err != nil {
 			return err
@@ -34,7 +36,7 @@ var importCmd = &wcli.Command{
 		defer func() { _ = client.Close() }()
 
 		importPath := args[0]
-		fmt.Printf("복원 준비 중... 백업 파일: %s\n", importPath)
+		statusf("복원 준비 중... 백업 파일: %s", importPath)
 
 		// 1. zip 아카이브 열기
 		r, err := zip.OpenReader(importPath)
@@ -78,66 +80,66 @@ var importCmd = &wcli.Command{
 
 		// --clean 옵션이 켜져있다면 기존 데이터 일괄 삭제 (파괴적 작업이므로 확인 필수)
 		if cleanImport {
-			confirm := false
-			err := huh.NewConfirm().
-				Title("--clean: 서버의 모든 기존 노트와 파일을 삭제한 뒤 복원합니다. 계속하시겠습니까?").
-				Affirmative("예 (전체 삭제 후 복원)").
-				Negative("아니오 (취소)").
-				Value(&confirm).
-				Run()
-			if err != nil || !confirm {
+			confirm, err := askConfirm(
+				"--clean: 서버의 모든 기존 노트와 파일을 삭제한 뒤 복원합니다. 계속하시겠습니까?",
+				"예 (전체 삭제 후 복원)",
+				"아니오 (취소)",
+				"--clean을 실행하려면 --yes/-y 플래그를 지정하세요",
+			)
+			if err != nil {
+				return err
+			}
+			if !confirm {
 				fmt.Println("복원이 취소되었습니다.")
 				return nil
 			}
 
-			fmt.Println("기존 데이터 삭제 요청(--clean) 처리 중...")
+			statusf("기존 데이터 삭제 요청(--clean) 처리 중...")
 
 			// 기존 노트 삭제
-			fmt.Print("기존 노트를 조회하는 중... ")
 			existingBoards, err := client.GetBoards()
 			if err == nil {
-				fmt.Printf("성공 (%d개 삭제 시작)\n", len(existingBoards))
+				statusf("기존 노트 %d개 삭제 시작", len(existingBoards))
 				for _, eb := range existingBoards {
 					if err := client.DeleteBoard(eb.ID); err != nil {
-						fmt.Printf("노트 삭제 실패 (ID: %d): %v\n", eb.ID, err)
+						statusf("노트 삭제 실패 (ID: %d): %v", eb.ID, err)
 					}
 				}
 			} else {
-				fmt.Printf("실패 (계속 진행): %v\n", err)
+				statusf("기존 노트 조회 실패 (계속 진행): %v", err)
 			}
 
 			// 기존 파일 삭제
-			fmt.Print("기존 파일을 조회하는 중... ")
 			existingFiles, err := client.GetFiles()
 			if err == nil {
-				fmt.Printf("성공 (%d개 삭제 시작)\n", len(existingFiles))
+				statusf("기존 파일 %d개 삭제 시작", len(existingFiles))
 				for _, ef := range existingFiles {
 					if err := client.DeleteFile(ef.ID); err != nil {
-						fmt.Printf("파일 삭제 실패 (ID: %d): %v\n", ef.ID, err)
+						statusf("파일 삭제 실패 (ID: %d): %v", ef.ID, err)
 					}
 				}
 			} else {
-				fmt.Printf("실패 (계속 진행): %v\n", err)
+				statusf("기존 파일 조회 실패 (계속 진행): %v", err)
 			}
-			fmt.Println("기존 데이터 삭제 완료.")
+			statusf("기존 데이터 삭제 완료.")
 		}
 
 		// 2. 이미지/첨부파일 복원 및 URL 매핑 생성
 		oldURLToNewURL := make(map[string]string)
 		if len(backupFiles) > 0 {
-			fmt.Println("첨부파일 복원 시작...")
+			statusf("첨부파일 복원 시작...")
 			for _, bf := range backupFiles {
 				entryPath := fmt.Sprintf("files/%d_%s", bf.ID, bf.OriginalFilename)
 				zipEntry := findBackupFileEntry(r.File, entryPath)
 
 				if zipEntry == nil {
-					fmt.Printf("경고: 백업본 내부에서 파일을 찾을 수 없습니다: %s. 건너뜁니다.\n", entryPath)
+					statusf("경고: 백업본 내부에서 파일을 찾을 수 없습니다: %s. 건너뜁니다.", entryPath)
 					continue
 				}
 
 				// 서버 업로드 제한을 초과하는 파일은 사전에 건너뛴다
 				if exceedsRestoreFileSize(zipEntry) {
-					fmt.Printf("경고: 파일 크기가 제한(%dMB)을 초과하여 건너뜁니다: %s\n", maxRestoreFileSize/(1024*1024), bf.OriginalFilename)
+					statusf("경고: 파일 크기가 제한(%dMB)을 초과하여 건너뜁니다: %s", maxRestoreFileSize/(1024*1024), bf.OriginalFilename)
 					continue
 				}
 
@@ -165,14 +167,13 @@ var importCmd = &wcli.Command{
 				}
 
 				// 업로드
-				fmt.Printf("파일 업로드 중: %s -> ", bf.OriginalFilename)
 				uploaded, err := client.UploadFile(tmpPath)
 				_ = os.Remove(tmpPath) // 업로드 후 즉시 제거
 				if err != nil {
-					fmt.Printf("실패 (%v)\n", err)
+					statusf("파일 업로드 실패 (%s): %v", bf.OriginalFilename, err)
 					continue
 				}
-				fmt.Printf("성공 (새 ID: %d)\n", uploaded.ID)
+				statusf("파일 업로드 완료 (%s, 새 ID: %d)", bf.OriginalFilename, uploaded.ID)
 
 				// URL 매핑 관계 기록
 				oldURLToNewURL[bf.URL] = uploaded.URL

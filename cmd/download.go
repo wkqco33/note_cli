@@ -47,7 +47,7 @@ var downloadCmd = &wcli.Command{
 		if err != nil {
 			return fmt.Errorf("현재 작업 디렉토리를 가져올 수 없습니다: %w", err)
 		}
-		fmt.Printf("다운로드 중 (File ID: %d)...\n", id)
+		statusf("다운로드 중 (File ID: %d)...", id)
 		destPath, err := client.DownloadFile(id, cwd, filename)
 		if err != nil {
 			return fmt.Errorf("다운로드 실패: %w", err)

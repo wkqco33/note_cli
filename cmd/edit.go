@@ -23,12 +23,13 @@ var editCmd = &wcli.Command{
 	Long: `기존 노트를 수정합니다.
 
 플래그를 지정하면 해당 항목의 폼/편집기 입력을 건너뛰고 지정한 값으로 수정합니다.
-지정하지 않은 필드는 기존 값이 유지됩니다.
+지정하지 않은 필드는 기존 값이 유지됩니다. 비대화형 환경에서는 지정하지 않은 필드를
+묻지 않고 기존 값을 그대로 유지합니다.
 
 예시:
   ncli edit 3 --title "수정된 제목"          # 제목만 변경
   ncli edit 3 --content-file new_content.md  # 내용만 변경
-  echo "새 내용" | ncli edit 3 -c -          # stdin으로 내용 변경`,
+  echo "새 내용" | ncli edit 3 -c -          # stdin으로 내용 변경 (완전 비대화형)`,
 	Run: func(ctx *wcli.Context) error {
 		if err := requireMaxArgs(ctx.Args, 1); err != nil {
 			return err
@@ -79,17 +80,22 @@ var editCmd = &wcli.Command{
 			title = editTitle
 		}
 
-		// 미지정 필드만 폼/편집기로 입력받는다
-		if err := runNoteForm(editTitle == "", editCategory == "", &title, &category); err != nil {
-			fmt.Println("수정이 취소되었습니다.")
-			return nil
+		// 미지정 필드만 폼/편집기로 입력받는다.
+		// 비대화형이면 미지정 필드는 기존 값을 유지한다 (플래그 미지정 = 기존 값 유지).
+		askTitle, askCategory := resolveNoteFormPrompts(editTitle, editCategory, promptAllowed())
+
+		if err := runNoteForm(askTitle, askCategory, &title, &category); err != nil {
+			return handlePromptError(err, "수정이 취소되었습니다.")
 		}
 
 		content := note.Content
 		if hasContentFlag {
 			content = flagContent
 		} else {
-			fmt.Println("노트 내용을 편집기에서 수정합니다...")
+			if !promptAllowed() {
+				return interactionRequired("내용을 지정하세요: --content/-c (stdin은 -c -), --content-file")
+			}
+			statusf("노트 내용을 편집기에서 수정합니다...")
 			content, err = tui.OpenEditor(note.Content)
 			if err != nil {
 				return fmt.Errorf("편집기를 열지 못했습니다: %w", err)

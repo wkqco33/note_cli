@@ -50,6 +50,26 @@ func TestNormalizeRootArgs(t *testing.T) {
 			want: []string{"list", "--debug=false"},
 		},
 		{
+			name: "global yes before command",
+			args: []string{"--yes", "delete", "1"},
+			want: []string{"delete", "1", "--yes"},
+		},
+		{
+			name: "short yes before command",
+			args: []string{"-y", "delete", "1"},
+			want: []string{"delete", "1", "-y"},
+		},
+		{
+			name: "global no-input before command",
+			args: []string{"--no-input", "add", "-t", "x"},
+			want: []string{"add", "-t", "x", "--no-input"},
+		},
+		{
+			name: "multiple global flags before command",
+			args: []string{"--no-input", "--yes", "delete", "1"},
+			want: []string{"delete", "1", "--no-input", "--yes"},
+		},
+		{
 			name: "other root flag remains unchanged",
 			args: []string{"--help", "list"},
 			want: []string{"--help", "list"},

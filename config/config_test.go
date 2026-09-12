@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -213,5 +214,65 @@ func TestLoadLegacyConfigDefaultsToRemoteMode(t *testing.T) {
 	}
 	if cfg.Mode != "remote" {
 		t.Fatalf("legacy mode = %q, want remote", cfg.Mode)
+	}
+}
+
+func TestConfigPathHonorsXDGConfigHome(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	got, err := Path()
+	if err != nil {
+		t.Fatalf("Path() error: %v", err)
+	}
+	want := filepath.Join(dir, "note_cli", "config.yaml")
+	if got != want {
+		t.Fatalf("Path() = %q, want %q", got, want)
+	}
+}
+
+func TestConfigPathFallsBackToHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	got, err := Path()
+	if err != nil {
+		t.Fatalf("Path() error: %v", err)
+	}
+	want := filepath.Join(home, ".config", "note_cli", "config.yaml")
+	if got != want {
+		t.Fatalf("Path() = %q, want %q", got, want)
+	}
+}
+
+func TestDatabasePathHonorsXDGDataHome(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dir)
+
+	got, err := DatabasePath()
+	if err != nil {
+		t.Fatalf("DatabasePath() error: %v", err)
+	}
+	want := filepath.Join(dir, "note_cli", "notes.db")
+	if got != want {
+		t.Fatalf("DatabasePath() = %q, want %q", got, want)
+	}
+}
+
+func TestDatabasePathFallsBackToHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_DATA_HOME", "")
+
+	got, err := DatabasePath()
+	if err != nil {
+		t.Fatalf("DatabasePath() error: %v", err)
+	}
+	want := filepath.Join(home, ".local", "share", "note_cli", "notes.db")
+	if got != want {
+		t.Fatalf("DatabasePath() = %q, want %q", got, want)
 	}
 }

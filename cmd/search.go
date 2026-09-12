@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"note_cli/api"
 	"strings"
+
+	"note_cli/api"
+	"note_cli/utils"
 
 	"github.com/charmbracelet/huh"
 	"github.com/wkqco33/wcli"
@@ -14,6 +16,7 @@ var (
 	searchContent string
 	searchFile    string
 	searchFormat  string
+	searchJSON    bool
 )
 
 var searchCmd = &wcli.Command{
@@ -28,6 +31,10 @@ var searchCmd = &wcli.Command{
 
 		// 플래그가 하나도 입력되지 않았을 경우 TUI 표시
 		if searchTitle == "" && searchContent == "" && searchFile == "" {
+			if err := requirePrompt("검색 조건을 지정하세요: -t/--title, -c/--content, -f/--file"); err != nil {
+				return err
+			}
+
 			var searchType string
 			var query string
 
@@ -54,8 +61,7 @@ var searchCmd = &wcli.Command{
 			)
 
 			if err := form.Run(); err != nil {
-				fmt.Println("검색이 취소되었습니다.")
-				return nil
+				return handlePromptError(err, "검색이 취소되었습니다.")
 			}
 
 			switch searchType {
@@ -68,14 +74,23 @@ var searchCmd = &wcli.Command{
 			}
 		}
 
-		notes, err := client.GetBoards()
+		var notes []api.BoardRead
+		err = utils.WithSpinner("노트를 불러오는 중...", func() error {
+			var innerErr error
+			notes, innerErr = client.GetBoards()
+			return innerErr
+		})
 		if err != nil {
 			return fmt.Errorf("노트 목록을 불러오지 못했습니다: %w", err)
 		}
 
 		var files []api.FileRead
 		if searchFile != "" {
-			files, err = client.GetFiles()
+			err = utils.WithSpinner("파일 목록을 불러오는 중...", func() error {
+				var innerErr error
+				files, innerErr = client.GetFiles()
+				return innerErr
+			})
 			if err != nil {
 				return fmt.Errorf("검색용 파일 목록을 불러오지 못했습니다: %w", err)
 			}
@@ -83,7 +98,7 @@ var searchCmd = &wcli.Command{
 
 		results := filterBoards(notes, files, searchTitle, searchContent, searchFile)
 
-		format, err := parseOutputFormat(searchFormat)
+		format, err := outputFormatFromFlags(searchFormat, searchJSON)
 		if err != nil {
 			return err
 		}
@@ -96,19 +111,19 @@ var searchCmd = &wcli.Command{
 				if renderErr != nil {
 					return renderErr
 				}
-				printRenderedNotes(rendered)
+				printRenderedNotes(rendered, false)
 			}
 			return nil
 		}
 
 		if format == formatText {
-			fmt.Printf("총 %d개의 노트를 찾았습니다.\n", len(results))
+			statusf("총 %d개의 노트를 찾았습니다.", len(results))
 		}
 		rendered, err := renderNotes(results, format)
 		if err != nil {
 			return err
 		}
-		printRenderedNotes(rendered)
+		printRenderedNotes(rendered, format == formatText)
 		return nil
 	},
 }
@@ -169,5 +184,6 @@ func init() {
 	searchCmd.Flags().StringVar(&searchContent, "content", "c", "", "노트 내용으로 검색")
 	searchCmd.Flags().StringVar(&searchFile, "file", "f", "", "첨부 파일명으로 검색")
 	searchCmd.Flags().StringVar(&searchFormat, "format", "", "", "출력 형식 지정 (text, json, yaml)")
+	searchCmd.Flags().BoolVar(&searchJSON, "json", "", false, "JSON 형식으로 출력 (--format json과 동일)")
 	rootCmd.AddCommand(searchCmd)
 }

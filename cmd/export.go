@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/schollz/progressbar/v3"
 	"github.com/wkqco33/wcli"
 )
 
@@ -34,25 +33,21 @@ var exportCmd = &wcli.Command{
 			exportPath = defaultExportPath(time.Now())
 		}
 
-		fmt.Printf("백업 준비 중... 대상 파일: %s\n", exportPath)
+		statusf("백업 준비 중... 대상 파일: %s", exportPath)
 
 		// 1. 노트 목록 조회
-		fmt.Print("노트 데이터를 조회하는 중... ")
 		boards, err := client.GetBoards()
 		if err != nil {
-			fmt.Printf("실패\n")
-			return fmt.Errorf("에러: %w", err)
+			return fmt.Errorf("노트 데이터를 조회하지 못했습니다: %w", err)
 		}
-		fmt.Printf("성공 (%d개)\n", len(boards))
+		statusf("노트 데이터 조회 성공 (%d개)", len(boards))
 
 		// 2. 첨부파일 목록 조회
-		fmt.Print("첨부파일 데이터를 조회하는 중... ")
 		files, err := client.GetFiles()
 		if err != nil {
-			fmt.Printf("실패\n")
-			return fmt.Errorf("에러: %w", err)
+			return fmt.Errorf("첨부파일 데이터를 조회하지 못했습니다: %w", err)
 		}
-		fmt.Printf("성공 (%d개)\n", len(files))
+		statusf("첨부파일 데이터 조회 성공 (%d개)", len(files))
 
 		// 3. zip 파일 생성
 		zipFile, err := os.Create(exportPath)
@@ -101,13 +96,13 @@ var exportCmd = &wcli.Command{
 				totalSize += int64(f.FileSize)
 			}
 
-			fmt.Println("첨부파일 백업 다운로드 시작...")
-			bar := progressbar.DefaultBytes(totalSize, "다운로드 및 압축")
+			statusf("첨부파일 백업 다운로드 시작...")
+			bar := newProgressBar(totalSize, "다운로드 및 압축")
 
 			for _, f := range files {
 				body, _, err := client.GetFileStream(f.ID)
 				if err != nil {
-					fmt.Printf("\n파일 다운로드 실패 (ID: %d, 파일명: %s): %v. 계속 진행합니다.\n", f.ID, f.OriginalFilename, err)
+					statusf("파일 다운로드 실패 (ID: %d, 파일명: %s): %v. 계속 진행합니다.", f.ID, f.OriginalFilename, err)
 					continue
 				}
 
@@ -115,18 +110,17 @@ var exportCmd = &wcli.Command{
 				fileEntry, err := archive.Create(entryPath)
 				if err != nil {
 					_ = body.Close()
-					fmt.Printf("\nZIP 내 파일 생성 실패 (%s): %v. 계속 진행합니다.\n", entryPath, err)
+					statusf("ZIP 내 파일 생성 실패 (%s): %v. 계속 진행합니다.", entryPath, err)
 					continue
 				}
 
 				_, err = io.Copy(io.MultiWriter(fileEntry, bar), body)
 				_ = body.Close()
 				if err != nil {
-					fmt.Printf("\nZIP 복사 중 오류 발생 (%s): %v. 계속 진행합니다.\n", entryPath, err)
+					statusf("ZIP 복사 중 오류 발생 (%s): %v. 계속 진행합니다.", entryPath, err)
 					continue
 				}
 			}
-			fmt.Println()
 		}
 
 		fmt.Printf("백업이 성공적으로 완료되었습니다! 파일 경로: %s\n", exportPath)

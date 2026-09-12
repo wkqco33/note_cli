@@ -133,3 +133,32 @@ func TestRenderNotesUnsupportedFormat(t *testing.T) {
 		t.Fatal("renderAICreateDryRun sanity check failed")
 	}
 }
+
+func TestOutputFormatFromFlags(t *testing.T) {
+	tests := []struct {
+		name    string
+		format  string
+		json    bool
+		want    outputFormat
+		wantErr bool
+	}{
+		{name: "미지정은 text", format: "", json: false, want: formatText},
+		{name: "--format yaml", format: "yaml", json: false, want: formatYAML},
+		{name: "--json은 json", format: "", json: true, want: formatJSON},
+		{name: "--json이 --format보다 우선", format: "yaml", json: true, want: formatJSON},
+		{name: "--json이면 잘못된 --format도 무시", format: "bad", json: true, want: formatJSON},
+		{name: "잘못된 --format은 에러", format: "bad", json: false, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := outputFormatFromFlags(tt.format, tt.json)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("outputFormatFromFlags() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if err == nil && got != tt.want {
+				t.Fatalf("outputFormatFromFlags(%q, %v) = %v, want %v", tt.format, tt.json, got, tt.want)
+			}
+		})
+	}
+}

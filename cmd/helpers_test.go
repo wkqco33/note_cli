@@ -123,3 +123,30 @@ func TestFindFileByID(t *testing.T) {
 		t.Fatalf("unexpected file: %#v", file)
 	}
 }
+
+func TestResolveNoteFormPrompts(t *testing.T) {
+	tests := []struct {
+		name            string
+		title           string
+		category        string
+		promptOK        bool
+		wantAskTitle    bool
+		wantAskCategory bool
+	}{
+		{name: "둘 다 미지정 + 프롬프트 가능", title: "", category: "", promptOK: true, wantAskTitle: true, wantAskCategory: true},
+		{name: "둘 다 미지정 + 프롬프트 불가", title: "", category: "", promptOK: false, wantAskTitle: false, wantAskCategory: false},
+		{name: "제목만 미지정", title: "", category: "work", promptOK: true, wantAskTitle: true, wantAskCategory: false},
+		{name: "카테고리만 미지정 + 프롬프트 불가", title: "제목", category: "", promptOK: false, wantAskTitle: false, wantAskCategory: false},
+		{name: "둘 다 지정", title: "제목", category: "work", promptOK: true, wantAskTitle: false, wantAskCategory: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotTitle, gotCategory := resolveNoteFormPrompts(tt.title, tt.category, tt.promptOK)
+			if gotTitle != tt.wantAskTitle || gotCategory != tt.wantAskCategory {
+				t.Fatalf("resolveNoteFormPrompts(%q, %q, %v) = (%v, %v), want (%v, %v)",
+					tt.title, tt.category, tt.promptOK, gotTitle, gotCategory, tt.wantAskTitle, tt.wantAskCategory)
+			}
+		})
+	}
+}

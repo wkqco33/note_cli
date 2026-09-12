@@ -39,6 +39,7 @@ dist/
 
 # Go workspace file
 go.work
+go.work.sum
 
 ### Linux ###
 *~

@@ -31,17 +31,46 @@ type LLMConfig struct {
 }
 
 func getConfigPath() (string, error) {
-	home, err := os.UserHomeDir()
+	dir, err := configBaseDir()
 	if err != nil {
 		return "", err
 	}
-	// ~/.config/note_cli 디렉토리 사용 (없으면 생성)
-	configDir := filepath.Join(home, ".config", "note_cli")
+	// 기본은 ~/.config 이고, XDG_CONFIG_HOME이 설정되면 그 하위를 사용한다.
+	configDir := filepath.Join(dir, appDirName)
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return "", err
 	}
 
 	return filepath.Join(configDir, "config.yaml"), nil
+}
+
+// appDirName 사용자 설정/데이터 디렉토리 하위의 애플리케이션 이름
+const appDirName = "note_cli"
+
+// configBaseDir XDG_CONFIG_HOME을 우선 사용하고, 없으면 ~/.config로 폴백한다.
+func configBaseDir() (string, error) {
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		return xdg, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(home, ".config"), nil
+}
+
+// dataBaseDir XDG_DATA_HOME을 우선 사용하고, 없으면 ~/.local/share로 폴백한다.
+func dataBaseDir() (string, error) {
+	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+		return xdg, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(home, ".local", "share"), nil
 }
 
 // Path 설정 파일 경로 반환 (~/.config/note_cli/config.yaml)
@@ -130,12 +159,13 @@ func applyLLMDefaults(cfg *LLMConfig) {
 }
 
 // DatabasePath 로컬 모드에서 사용하는 SQLite 데이터베이스 경로를 반환한다.
+// XDG_DATA_HOME이 설정되면 그 하위를, 아니면 ~/.local/share/note_cli을 사용한다.
 func DatabasePath() (string, error) {
-	home, err := os.UserHomeDir()
+	base, err := dataBaseDir()
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".local", "share", "note_cli")
+	dir := filepath.Join(base, appDirName)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", err
 	}

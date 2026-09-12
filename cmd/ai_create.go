@@ -67,10 +67,13 @@ var aiCreateCmd = &wcli.Command{
 	Run: func(ctx *wcli.Context) error {
 		request := joinCreateRequest(ctx.Args)
 		if request == "" {
+			if err := requirePrompt("요청을 인자로 전달하세요 (예: " + binaryName() + " ai create \"요청 내용\")"); err != nil {
+				return err
+			}
+
 			var input string
 			if err := huh.NewText().Title("노트 생성 요청").Value(&input).Run(); err != nil {
-				fmt.Println("작성이 취소되었습니다.")
-				return nil
+				return handlePromptError(err, "작성이 취소되었습니다.")
 			}
 			request = strings.TrimSpace(input)
 		}

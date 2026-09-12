@@ -95,7 +95,12 @@ ncli config set mode local
 ncli register
 ```
 
-이름, 이메일, 비밀번호를 입력하는 인터랙티브 폼이 표시됩니다.
+이름, 이메일, 비밀번호를 입력하는 인터랙티브 폼이 표시됩니다. 비대화형 환경에서는 플래그로 지정합니다.
+
+```bash
+ncli register --name 홍길동 --email user@example.com --password-file ~/.secrets/pw
+cat pw.txt | ncli register --name 홍길동 --email user@example.com --password-stdin
+```
 
 #### 로그인
 
@@ -104,6 +109,13 @@ ncli login
 ```
 
 이메일과 비밀번호를 입력하면 인증 토큰이 `~/.config/note_cli/config.yaml`에 저장됩니다.
+비대화형 환경에서는 플래그로 지정할 수 있습니다. 비밀번호는 `--password-file` 또는 `--password-stdin`을 권장합니다
+(`--password`는 프로세스 목록과 셸 히스토리에 노출될 수 있어 사용 시 경고를 출력합니다).
+
+```bash
+ncli login --email user@example.com --password-file ~/.secrets/pw
+cat pw.txt | ncli login --email user@example.com --password-stdin
+```
 
 ---
 
@@ -156,6 +168,8 @@ ncli add -t "메모" -c "내용"
 
 플래그: `--title/-t`, `--content/-c` (`-`면 stdin), `--content-file`, `--category`, `--file/-f`
 
+> 비대화형 환경에서 카테고리를 지정하지 않으면 기본값 `other`를 사용하며 프롬프트를 띄우지 않습니다. 제목과 내용은 반드시 플래그로 지정해야 합니다.
+
 #### 노트 조회
 
 ```bash
@@ -199,16 +213,67 @@ echo "새 내용" | ncli edit 3 -c -
 
 ```bash
 ncli list --format json
+ncli list --json            # --format json 단축
 ncli list --format yaml
-ncli search --title 회의 --format json
-ncli view 3 --format yaml
+ncli search --title 회의 --json
+ncli view 3 --json
 ```
 
 - 미지정 시 기존과 같이 사람이 읽는 형식(text)으로 출력됩니다.
+- `--json`은 `--format json`과 동일하며, 둘 다 지정되면 `--json`이 우선합니다.
 - `json`/`yaml` 출력 시 이미지 렌더링, 안내 문구 없이 순수 데이터만 출력됩니다.
+- 진행/상태 안내는 **stderr**로, 실제 결과(표/JSON/YAML/노트 본문)는 **stdout**으로 출력되어 파이프를 오염시키지 않습니다.
+- `list`/`search`의 text 출력은 stdout이 터미널일 때 페이저(`PAGER`, 기본 `less -FIRX`)로 넘깁니다. 파이프·리다이렉트·`-q`·`--no-pager`·JSON/YAML 출력에서는 페이징하지 않습니다.
 - 지원하지 않는 형식을 지정하면 오류와 함께 가능한 값이 안내됩니다.
 - `download`: 노트의 첨부파일을 다운로드합니다. 파일 전송에는 진행률 표시줄(Progress bar)이 제공되며, ID 생략 시 전체 파일 목록을 TUI 기반으로 탐색하여 다운로드할 수 있습니다. 원본 파일명으로 저장됩니다.
 - `search`: `--title (제목)`, `--content (내용)`, `--file (첨부파일명)` 플래그를 조합하여 노트를 빠르게 검색할 수 있습니다. 아무 플래그도 입력하지 않으면 대화형(TUI) 방식으로 검색 조건을 선택할 수 있습니다.
+
+#### 비대화형 실행 (`--yes` / `--no-input`)
+
+ncli는 `stdin`이 터미널이 아니면(파이프, 리다이렉트, CI, 에이전트) 대화형 프롬프트를 띄우지 않습니다.
+이때 입력이 필요하면 조용히 취소되지 않고, 필요한 플래그를 안내하는 오류와 함께 **종료 코드 2**로 종료합니다.
+
+```bash
+# 프롬프트를 띄우지 않고 즉시 실패 (종료 코드 2)
+echo "" | ncli delete 3
+# 대화형 입력이 필요합니다: 삭제하려면 --yes/-y 플래그를 지정하세요
+
+# 확인 자동 승인
+ncli delete 3 --yes
+
+# 모든 프롬프트 금지 (필요한 값은 플래그로)
+ncli add -t "메모" -c "내용" --no-input
+```
+
+전역 플래그 (서브커맨드 앞뒤 어디에나 지정 가능):
+
+- `--yes`, `-y`: 확인 프롬프트(삭제, `import --clean` 등)를 자동 승인합니다.
+- `--no-input`: 모든 대화형 프롬프트를 금지합니다. 값을 지정하지 않으면 오류로 안내합니다.
+- `--quiet`, `-q`: 진행/상태 안내(stderr)와 진행률 표시줄을 출력하지 않습니다.
+- `--no-color`: 색상 출력을 끕니다 (`NO_COLOR` 환경변수와 동일).
+- `--no-pager`: 긴 출력을 페이저로 넘기지 않습니다 (`PAGER` 환경변수로 지정).
+- `--version`: 버전을 출력합니다 (`ncli version`과 동일).
+- `--help`, `-h`: 도움말을 출력합니다. `ncli help <command>`로 서브커맨드 도움말도 볼 수 있습니다.
+- `--debug`: 디버그 로그를 stderr로 출력합니다 (`DEBUG` 환경변수와 동일).
+
+종료 코드:
+
+- `0`: 성공
+- `1`: 실행 오류 (검증 실패, 네트워크 오류 등)
+- `2`: 대화형 입력이 필요하지만 프롬프트를 띄울 수 없음 (플래그로 입력)
+
+> 대화형 사용자는 기존과 동일하게 폼을 사용할 수 있으며, ESC/Ctrl+C로 취소하면 종료 코드 0으로 끝납니다.
+> ID를 생략하는 `view`, `download`, `delete`, `ai improve`, `ai todos`, `ai summarize-file`은 비대화형 환경에서 ID를 인자로 요구합니다.
+
+환경변수:
+
+- `NO_COLOR`: 색상 출력을 끕니다 (`--no-color`와 동일).
+- `DEBUG`: 디버그 로그를 출력합니다 (`--debug`와 동일).
+- `EDITOR`: 노트 내용 편집에 사용할 편집기 (기본: `vim`, Windows는 `notepad`).
+- `PAGER`: 긴 출력에 사용할 페이저 (기본: `less -FIRX`, `cat`/`none`이면 사용 안 함).
+- `XDG_CONFIG_HOME`: 설정 파일 위치 변경 (기본 `~/.config`).
+- `XDG_DATA_HOME`: 로컬 데이터 위치 변경 (기본 `~/.local/share`).
+- `TMPDIR`: 임시 파일 위치 (캐시 이미지 등).
 
 #### LLM 기능
 
@@ -286,7 +351,11 @@ ncli delete [ID]
 ncli delete
 ncli delete 1
 ncli delete --file
+ncli delete 1 --yes        # 확인 없이 삭제 (비대화형/CI)
+ncli delete --file 2 --yes # 첨부파일 삭제
 ```
+
+삭제는 항상 확인 단계를 거칩니다. 비대화형 환경에서는 `--yes`가 없으면 종료 코드 2로 실패합니다.
 
 ---
 
@@ -304,7 +373,9 @@ export EDITOR=nano
 
 ## 설정 파일
 
-앱을 처음 실행하거나 로그인하면 `~/.config/note_cli/config.yaml` 파일이 자동으로 생성됩니다.
+앱을 처음 실행하거나 로그인하면 설정 파일이 자동으로 생성됩니다.
+기본 위치는 `~/.config/note_cli/config.yaml`이며, `XDG_CONFIG_HOME`이 설정되면 `$XDG_CONFIG_HOME/note_cli/config.yaml`을 사용합니다.
+로컬 데이터베이스는 기본 `~/.local/share/note_cli/notes.db`이고, `XDG_DATA_HOME`이 설정되면 `$XDG_DATA_HOME/note_cli/notes.db`를 사용합니다.
 
 ```yaml
 mode: local
