@@ -111,8 +111,8 @@ github.com/wkqco33/LLM_client_go v0.1.0 h1:oYw6sSe5yinBu+FtSQw2TJ6wW8XSqDA516L4i
 github.com/wkqco33/LLM_client_go v0.1.0/go.mod h1:Se3UP/dQmR0JKLuTeO4WAeo8Kw8hT9QxdT9JR1uRSTU=
 github.com/wkqco33/tdraw v0.1.5 h1:hLu/eTTTCbJgnDtjdd57trNBON9LjrUsgv33e3GT0dk=
 github.com/wkqco33/tdraw v0.1.5/go.mod h1:pCBmsAyeArQ4XNruxizRE4ID1UsdTz1MM6I7mXHpXc4=
-github.com/wkqco33/wcli v0.2.0 h1:f4hbJ8XtNTDXLInnftAaKeJwmWu5VaTa5QxSmrKbGUY=
-github.com/wkqco33/wcli v0.2.0/go.mod h1:4ENGpQ6fBCBNJxfMEYqro1SrosRjrrEreGeJXQsoolo=
+github.com/wkqco33/wcli v0.2.3 h1:ebpHWznoZIY9mhBl8gBAlEUW32DO/4bRUD8bgPflaZc=
+github.com/wkqco33/wcli v0.2.3/go.mod h1:4ENGpQ6fBCBNJxfMEYqro1SrosRjrrEreGeJXQsoolo=
 github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e h1:JVG44RsyaB9T2KIHavMF/ppJZNG9ZpyihvCd0w101no=
 github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e/go.mod h1:RbqR21r5mrJuqunuUZ/Dhy/avygyECGrLceyNeo4LiM=
 github.com/yuin/goldmark v1.7.13 h1:GPddIs617DnBLFFVJFgpo1aBfe/4xcvMc3SB5t/D0pA=
