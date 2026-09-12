@@ -12,6 +12,9 @@ func setTestHome(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 	t.Setenv("USERPROFILE", dir)
+	// XDG_*가 설정된 환경(CI 등)에서도 설정 경로가 테스트별로 격리되도록 비운다.
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("XDG_DATA_HOME", "")
 }
 
 func TestSaveEncryptsPassword(t *testing.T) {

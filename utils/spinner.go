@@ -64,7 +64,7 @@ func withSpinner(message string, out io.Writer, delay time.Duration, fn func() e
 				return
 			default:
 			}
-			fmt.Fprintf(out, "\r%s %s", spinnerFrames[i%len(spinnerFrames)], message)
+			_, _ = fmt.Fprintf(out, "\r%s %s", spinnerFrames[i%len(spinnerFrames)], message)
 			i++
 			time.Sleep(spinnerInterval)
 		}
@@ -83,5 +83,5 @@ func withSpinner(message string, out io.Writer, delay time.Duration, fn func() e
 // clearSpinnerLine 스피너가 차지한 줄을 지운다.
 func clearSpinnerLine(w io.Writer, message string) {
 	width := runewidth.StringWidth(message) + 2
-	fmt.Fprintf(w, "\r%s\r", strings.Repeat(" ", width))
+	_, _ = fmt.Fprintf(w, "\r%s\r", strings.Repeat(" ", width))
 }
